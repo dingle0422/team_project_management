@@ -141,7 +141,7 @@ def get_current_user_info(
     return Response(data=MemberInfo.model_validate(current_user))
 
 
-@router.post("/change-password", response_model=Response)
+@router.put("/change-password", response_model=Response)
 def change_password(
     *,
     db: Session = Depends(get_db),

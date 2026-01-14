@@ -177,6 +177,44 @@ def list_tasks(
     )
 
 
+@router.get("/my", response_model=PaginatedResponse[TaskInfo])
+def list_my_tasks(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Member = Depends(get_current_user),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    status: Optional[str] = Query(None, description="状态筛选"),
+):
+    """
+    获取我的任务列表
+    """
+    query = db.query(Task).options(
+        joinedload(Task.project),
+        joinedload(Task.assignee),
+        joinedload(Task.creator)
+    ).filter(Task.assignee_id == current_user.id)
+    
+    if status:
+        query = query.filter(Task.status == status)
+    
+    total = query.count()
+    offset = (page - 1) * page_size
+    tasks = query.order_by(Task.due_date.asc().nullslast(), Task.priority.desc()).offset(offset).limit(page_size).all()
+    
+    total_pages = (total + page_size - 1) // page_size
+    
+    return PaginatedResponse(
+        data=PaginatedData(
+            items=[convert_task_to_info(db, t) for t in tasks],
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages,
+        )
+    )
+
+
 @router.get("/by-project/{project_id}", response_model=Response[list[TaskInfo]])
 def list_project_tasks(
     *,
@@ -479,7 +517,7 @@ def delete_task(
 
 # ==================== 状态流转 ====================
 
-@router.post("/{task_id}/status", response_model=Response[TaskInfo])
+@router.patch("/{task_id}/status", response_model=Response[TaskInfo])
 def change_task_status(
     *,
     db: Session = Depends(get_db),

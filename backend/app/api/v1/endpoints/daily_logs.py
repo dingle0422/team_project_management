@@ -77,7 +77,7 @@ def convert_worklog_to_info(log: DailyWorkLog) -> WorkLogInfo:
 
 # ==================== 工时记录 ====================
 
-@router.get("/work-logs", response_model=PaginatedResponse[WorkLogInfo])
+@router.get("/logs", response_model=PaginatedResponse[WorkLogInfo])
 def list_work_logs(
     *,
     db: Session = Depends(get_db),
@@ -134,7 +134,7 @@ def list_work_logs(
     )
 
 
-@router.post("/work-logs", response_model=Response[WorkLogInfo])
+@router.post("/logs", response_model=Response[WorkLogInfo])
 def create_work_log(
     *,
     db: Session = Depends(get_db),
@@ -180,7 +180,7 @@ def create_work_log(
     return Response(data=convert_worklog_to_info(log))
 
 
-@router.put("/work-logs/{log_id}", response_model=Response[WorkLogInfo])
+@router.put("/logs/{log_id}", response_model=Response[WorkLogInfo])
 def update_work_log(
     *,
     db: Session = Depends(get_db),
@@ -232,7 +232,7 @@ def update_work_log(
     return Response(data=convert_worklog_to_info(log))
 
 
-@router.delete("/work-logs/{log_id}", response_model=Response)
+@router.delete("/logs/{log_id}", response_model=Response)
 def delete_work_log(
     *,
     db: Session = Depends(get_db),
@@ -483,7 +483,7 @@ def get_daily_report(
 
 # ==================== 快速日报提交 ====================
 
-@router.post("/reports/quick", response_model=Response[DailyReportInfo])
+@router.post("/quick-submit", response_model=Response[DailyReportInfo])
 def submit_quick_daily_report(
     *,
     db: Session = Depends(get_db),
@@ -573,7 +573,7 @@ def submit_quick_daily_report(
 
 # ==================== 工时统计 ====================
 
-@router.get("/stats/hours", response_model=Response[WorkHoursSummary])
+@router.get("/stats", response_model=Response[WorkHoursSummary])
 def get_work_hours_stats(
     *,
     db: Session = Depends(get_db),

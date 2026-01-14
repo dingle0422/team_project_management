@@ -45,7 +45,7 @@ api_router.include_router(
 # 日报/工时
 api_router.include_router(
     daily_logs.router,
-    prefix="/daily",
+    prefix="/daily-logs",
     tags=["日报工时"]
 )
 

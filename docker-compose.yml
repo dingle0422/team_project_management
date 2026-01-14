@@ -1,7 +1,5 @@
 # 算法团队项目管理系统 - Docker Compose 配置
 
-version: '3.8'
-
 services:
   # PostgreSQL 数据库
   db:
@@ -61,6 +59,23 @@ services:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
+      retries: 3
+
+  # 前端服务 (Nginx + 静态文件)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: pm_frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
       retries: 3
 
 volumes:
