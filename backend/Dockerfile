@@ -5,6 +5,9 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
+# 换国内源加速
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
+
 # 安装构建依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -25,6 +28,9 @@ RUN pip install --no-cache-dir --upgrade pip && \
 FROM python:3.11-slim AS runner
 
 WORKDIR /app
+
+# 换国内源加速
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources
 
 # 安装运行时依赖
 RUN apt-get update && apt-get install -y --no-install-recommends \
