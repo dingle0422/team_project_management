@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 
 from app.api.deps import get_db, get_current_user, check_owner_or_admin
-from app.models.member import Member, ProjectMember
-from app.models.project import Project
+from app.models.member import Member
+from app.models.project import Project, ProjectMember
 from app.models.task import Task
 from app.schemas.project import (
     ProjectCreate,
