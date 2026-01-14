@@ -1,0 +1,93 @@
+.daily-page {
+  max-width: 100%;
+}
+
+.daily-content {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: var(--spacing-lg);
+}
+
+.calendar-section {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  box-shadow: var(--shadow);
+}
+
+.calendar-cell-content {
+  font-size: 12px;
+}
+
+.logs-section {
+  background: var(--white);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow);
+}
+
+.logs-section .section-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.logs-section .section-header h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--gray-800);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.log-title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 500;
+}
+
+.log-desc {
+  margin-top: 4px;
+}
+
+.log-desc p {
+  color: var(--gray-600);
+  margin-bottom: 4px;
+}
+
+.log-project {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.day-stats {
+  display: flex;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  margin-top: var(--spacing-lg);
+}
+
+.day-stats .stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.day-stats .label {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.day-stats .value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+@media (max-width: 768px) {
+  .daily-content {
+    grid-template-columns: 1fr;
+  }
+}

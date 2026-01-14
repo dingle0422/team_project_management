@@ -1,0 +1,97 @@
+.weekly-page {
+  max-width: 100%;
+}
+
+.report-card {
+  height: 100%;
+}
+
+.report-card .ant-card-body {
+  padding: var(--spacing-lg);
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+}
+
+.report-date {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.report-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: 4px;
+}
+
+.report-period {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: var(--spacing-sm);
+}
+
+.report-summary {
+  font-size: 14px;
+  color: var(--gray-600);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: var(--spacing-md);
+}
+
+.report-footer {
+  display: flex;
+  gap: var(--spacing-sm);
+}
+
+/* 周报详情 */
+.report-detail {
+  padding: var(--spacing-md);
+}
+
+.report-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-md);
+  color: var(--gray-500);
+}
+
+.report-detail h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--gray-900);
+  margin-bottom: var(--spacing-lg);
+}
+
+.report-section {
+  margin-bottom: var(--spacing-lg);
+}
+
+.report-section h4 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--spacing-sm);
+}
+
+.report-section p {
+  color: var(--gray-600);
+  line-height: 1.8;
+}
+
+.report-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--gray-100);
+  font-size: 13px;
+  color: var(--gray-500);
+}

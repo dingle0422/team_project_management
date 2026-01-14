@@ -1,0 +1,20 @@
+.analytics-page {
+  max-width: 100%;
+}
+
+.chart-card {
+  height: 100%;
+}
+
+.chart-card .ant-card-head {
+  border-bottom: none;
+}
+
+.chart-card .ant-card-head-title {
+  font-weight: 600;
+  color: var(--gray-800);
+}
+
+.chart-card .ant-card-body {
+  padding-top: 0;
+}
