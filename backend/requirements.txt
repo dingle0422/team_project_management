@@ -1,0 +1,34 @@
+# 算法团队项目管理系统 - Python依赖
+
+# Web框架
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# 数据库
+sqlalchemy==2.0.25
+asyncpg==0.29.0
+psycopg2-binary==2.9.9
+alembic==1.13.1
+
+# 数据验证
+pydantic==2.5.3
+pydantic-settings==2.1.0
+email-validator==2.1.0
+
+# 认证
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# AI服务
+openai==1.12.0
+httpx==0.26.0
+
+# 工具库
+python-dateutil==2.8.2
+pytz==2024.1
+
+# 开发工具
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0

@@ -1,0 +1,1789 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算法团队项目管理系统 - 原型</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <header class="top-header">
+            <div class="header-left">
+                <div class="logo">
+                    <span class="logo-icon">🚀</span>
+                    <span class="logo-text">算法团队</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <nav class="main-nav">
+                    <a href="#" class="nav-item active" data-page="dashboard">工作台</a>
+                    <a href="#" class="nav-item" data-page="projects">项目</a>
+                    <a href="#" class="nav-item" data-page="tasks">任务</a>
+                    <a href="#" class="nav-item" data-page="daily">日报</a>
+                    <a href="#" class="nav-item" data-page="weekly">周报</a>
+                    <a href="#" class="nav-item" data-page="analytics">看板</a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <button class="icon-btn notification-btn">
+                    <span class="notification-dot"></span>
+                    🔔
+                </button>
+                <div class="user-menu">
+                    <div class="user-avatar">张</div>
+                    <span class="user-name">张三</span>
+                    <span class="dropdown-arrow">▾</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主内容区 -->
+        <main class="main-content">
+            <!-- 工作台页面 -->
+            <div id="page-dashboard" class="page active">
+                <div class="page-header">
+                    <div class="greeting">
+                        <h1>早上好，张三 👋</h1>
+                        <p class="subtitle">今天是 2026年1月14日，星期三</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showModal('daily-modal')">
+                        ✏️ 填写今日日报
+                    </button>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FEF3C7;">📋</div>
+                        <div class="stat-content">
+                            <div class="stat-value">5</div>
+                            <div class="stat-label">今日待办任务</div>
+                        </div>
+                        <div class="stat-trend up">+2</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #DBEAFE;">⏰</div>
+                        <div class="stat-content">
+                            <div class="stat-value">32.5h</div>
+                            <div class="stat-label">本周已记录工时</div>
+                        </div>
+                        <div class="stat-trend up">+8h</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #D1FAE5;">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-value">12</div>
+                            <div class="stat-label">本周完成任务</div>
+                        </div>
+                        <div class="stat-trend up">+3</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #E0E7FF;">📁</div>
+                        <div class="stat-content">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">进行中项目</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 三栏布局 -->
+                <div class="dashboard-grid three-col">
+                    <!-- 左侧：今日任务 -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h2>📋 今日待办</h2>
+                            <a href="#" class="link-btn" onclick="switchPage('tasks')">查看全部 →</a>
+                        </div>
+                        <div class="task-list">
+                            <div class="task-item priority-high">
+                                <div class="task-checkbox"></div>
+                                <div class="task-content">
+                                    <div class="task-title">推荐算法性能优化</div>
+                                    <div class="task-meta">
+                                        <span class="task-project">智能推荐系统</span>
+                                        <span class="task-time">预计 4h</span>
+                                    </div>
+                                </div>
+                                <div class="task-due urgent">今天</div>
+                            </div>
+                            <div class="task-item priority-medium">
+                                <div class="task-checkbox"></div>
+                                <div class="task-content">
+                                    <div class="task-title">API接口联调</div>
+                                    <div class="task-meta">
+                                        <span class="task-project">智能推荐系统</span>
+                                        <span class="task-time">预计 2h</span>
+                                    </div>
+                                </div>
+                                <div class="task-due">明天</div>
+                            </div>
+                            <div class="task-item priority-low">
+                                <div class="task-checkbox"></div>
+                                <div class="task-content">
+                                    <div class="task-title">技术文档编写</div>
+                                    <div class="task-meta">
+                                        <span class="task-project">数据平台</span>
+                                        <span class="task-time">预计 3h</span>
+                                    </div>
+                                </div>
+                                <div class="task-due">01-16</div>
+                            </div>
+                            <div class="task-item priority-medium">
+                                <div class="task-checkbox"></div>
+                                <div class="task-content">
+                                    <div class="task-title">单元测试编写</div>
+                                    <div class="task-meta">
+                                        <span class="task-project">智能推荐系统</span>
+                                        <span class="task-time">预计 2h</span>
+                                    </div>
+                                </div>
+                                <div class="task-due">01-17</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 中间：快速填报日报 -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h2>⚡ 快速记录日报</h2>
+                        </div>
+                        <div class="quick-log-form">
+                            <div class="form-row">
+                                <label>项目</label>
+                                <select class="form-select">
+                                    <option>智能推荐系统</option>
+                                    <option>数据平台</option>
+                                    <option>知识图谱项目</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>任务</label>
+                                <select class="form-select">
+                                    <option>推荐算法性能优化</option>
+                                    <option>API接口联调</option>
+                                    <option>缓存层设计</option>
+                                </select>
+                            </div>
+                            <div class="form-row inline">
+                                <div class="form-group">
+                                    <label>工时</label>
+                                    <div class="input-with-unit">
+                                        <input type="number" class="form-input" value="2" min="0.5" step="0.5">
+                                        <span class="unit">小时</span>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label>类型</label>
+                                    <select class="form-select">
+                                        <option>开发</option>
+                                        <option>调试</option>
+                                        <option>会议</option>
+                                        <option>文档</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>工作内容</label>
+                                <textarea class="form-textarea" placeholder="简述今天做了什么..."></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-block">添加记录</button>
+                        </div>
+
+                        <div class="today-summary">
+                            <div class="summary-header">
+                                <span>今日已记录</span>
+                                <span class="summary-total">4.5h</span>
+                            </div>
+                            <div class="summary-bar">
+                                <div class="bar-segment" style="width: 69%; background: #F59E0B;" title="智能推荐系统 3h"></div>
+                                <div class="bar-segment" style="width: 31%; background: #3B82F6;" title="数据平台 1.5h"></div>
+                            </div>
+                            <div class="summary-legend">
+                                <span><i style="background: #F59E0B;"></i> 智能推荐系统 3h</span>
+                                <span><i style="background: #3B82F6;"></i> 数据平台 1.5h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 右侧：快速创建会议纪要 -->
+                    <div class="dashboard-section">
+                        <div class="section-header">
+                            <h2>📋 快速创建会议纪要</h2>
+                        </div>
+                        <div class="quick-meeting-form">
+                            <div class="form-row">
+                                <label>所属项目</label>
+                                <select class="form-select">
+                                    <option>智能推荐系统</option>
+                                    <option>数据平台</option>
+                                    <option>知识图谱项目</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>会议标题</label>
+                                <input type="text" class="form-input" placeholder="输入会议标题...">
+                            </div>
+                            <div class="form-row inline">
+                                <div class="form-group">
+                                    <label>会议日期</label>
+                                    <input type="date" class="form-input" value="2026-01-14">
+                                </div>
+                                <div class="form-group">
+                                    <label>会议时间</label>
+                                    <input type="time" class="form-input" value="10:00">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>参会人员</label>
+                                <div class="attendee-selector">
+                                    <div class="attendee-tags">
+                                        <span class="attendee-tag">张三 ✕</span>
+                                        <span class="attendee-tag">李四 ✕</span>
+                                        <span class="add-attendee">+ 添加</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>会议摘要</label>
+                                <textarea class="form-textarea" placeholder="简述会议主要内容..."></textarea>
+                            </div>
+                            <button class="btn btn-primary btn-block" onclick="showModal('meeting-modal')">创建会议纪要</button>
+                        </div>
+
+                        <div class="recent-meetings">
+                            <div class="recent-header">
+                                <span>最近会议</span>
+                                <a href="#" class="link-btn">查看全部</a>
+                            </div>
+                            <div class="recent-meeting-list">
+                                <div class="recent-meeting-item">
+                                    <span class="meeting-date">01-10</span>
+                                    <span class="meeting-title">技术方案评审会</span>
+                                    <span class="meeting-project">智能推荐系统</span>
+                                </div>
+                                <div class="recent-meeting-item">
+                                    <span class="meeting-date">01-05</span>
+                                    <span class="meeting-title">项目启动会议</span>
+                                    <span class="meeting-project">智能推荐系统</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 最近动态 -->
+                <div class="dashboard-section full-width">
+                    <div class="section-header">
+                        <h2>🕐 最近动态</h2>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-avatar">李</div>
+                            <div class="activity-content">
+                                <strong>李四</strong> 完成了任务 <a href="#">推荐算法核心开发</a>
+                            </div>
+                            <div class="activity-time">2小时前</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-avatar">王</div>
+                            <div class="activity-content">
+                                <strong>王五</strong> 在 <a href="#">智能推荐系统</a> 创建了会议纪要
+                            </div>
+                            <div class="activity-time">3小时前</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-avatar">赵</div>
+                            <div class="activity-content">
+                                <strong>赵六</strong> 提交了日报
+                            </div>
+                            <div class="activity-time">5小时前</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 项目页面 -->
+            <div id="page-projects" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1>📁 项目管理</h1>
+                        <p class="subtitle">管理和跟踪所有AI项目</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showModal('project-modal')">
+                        ➕ 新建项目
+                    </button>
+                </div>
+
+                <!-- 筛选栏 -->
+                <div class="filter-bar">
+                    <div class="filter-tabs">
+                        <button class="filter-tab active">全部 (5)</button>
+                        <button class="filter-tab">进行中 (3)</button>
+                        <button class="filter-tab">已完成 (2)</button>
+                    </div>
+                    <div class="filter-actions">
+                        <div class="search-box">
+                            <span class="search-icon">🔍</span>
+                            <input type="text" placeholder="搜索项目...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 项目列表 -->
+                <div class="project-grid">
+                    <div class="project-card" onclick="switchPage('project-detail')">
+                        <div class="project-header">
+                            <div class="project-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">🤖</div>
+                            <div class="project-status status-active">进行中</div>
+                        </div>
+                        <h3 class="project-title">智能推荐系统</h3>
+                        <p class="project-code">AI-2026-001</p>
+                        <p class="project-desc">基于深度学习的个性化推荐系统，支持多场景推荐能力</p>
+                        <div class="project-progress">
+                            <div class="progress-info">
+                                <span>进度</span>
+                                <span>40%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 40%;"></div>
+                            </div>
+                        </div>
+                        <div class="project-meta">
+                            <div class="project-members">
+                                <div class="member-avatar">张</div>
+                                <div class="member-avatar">李</div>
+                                <div class="member-avatar">王</div>
+                                <div class="member-avatar more">+2</div>
+                            </div>
+                            <div class="project-stats">
+                                <span>8/20 任务</span>
+                                <span>·</span>
+                                <span>85.5h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="project-card">
+                        <div class="project-header">
+                            <div class="project-icon" style="background: linear-gradient(135deg, #3B82F6, #1D4ED8);">📊</div>
+                            <div class="project-status status-active">进行中</div>
+                        </div>
+                        <h3 class="project-title">数据分析平台</h3>
+                        <p class="project-code">AI-2026-002</p>
+                        <p class="project-desc">企业级数据分析与可视化平台，支持自助式分析</p>
+                        <div class="project-progress">
+                            <div class="progress-info">
+                                <span>进度</span>
+                                <span>65%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 65%;"></div>
+                            </div>
+                        </div>
+                        <div class="project-meta">
+                            <div class="project-members">
+                                <div class="member-avatar">赵</div>
+                                <div class="member-avatar">钱</div>
+                                <div class="member-avatar">孙</div>
+                            </div>
+                            <div class="project-stats">
+                                <span>13/20 任务</span>
+                                <span>·</span>
+                                <span>120h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="project-card">
+                        <div class="project-header">
+                            <div class="project-icon" style="background: linear-gradient(135deg, #8B5CF6, #6D28D9);">🧠</div>
+                            <div class="project-status status-active">进行中</div>
+                        </div>
+                        <h3 class="project-title">知识图谱引擎</h3>
+                        <p class="project-code">AI-2026-003</p>
+                        <p class="project-desc">基于NLP的知识图谱构建与推理引擎</p>
+                        <div class="project-progress">
+                            <div class="progress-info">
+                                <span>进度</span>
+                                <span>25%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 25%;"></div>
+                            </div>
+                        </div>
+                        <div class="project-meta">
+                            <div class="project-members">
+                                <div class="member-avatar">周</div>
+                                <div class="member-avatar">吴</div>
+                            </div>
+                            <div class="project-stats">
+                                <span>5/20 任务</span>
+                                <span>·</span>
+                                <span>45h</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="project-card completed">
+                        <div class="project-header">
+                            <div class="project-icon" style="background: linear-gradient(135deg, #10B981, #059669);">✨</div>
+                            <div class="project-status status-completed">已完成</div>
+                        </div>
+                        <h3 class="project-title">智能客服系统</h3>
+                        <p class="project-code">AI-2025-008</p>
+                        <p class="project-desc">基于对话式AI的智能客服解决方案</p>
+                        <div class="project-progress">
+                            <div class="progress-info">
+                                <span>进度</span>
+                                <span>100%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill complete" style="width: 100%;"></div>
+                            </div>
+                        </div>
+                        <div class="project-meta">
+                            <div class="project-members">
+                                <div class="member-avatar">张</div>
+                                <div class="member-avatar">李</div>
+                            </div>
+                            <div class="project-stats">
+                                <span>15/15 任务</span>
+                                <span>·</span>
+                                <span>180h</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 项目详情页 -->
+            <div id="page-project-detail" class="page">
+                <div class="page-header with-breadcrumb">
+                    <div class="breadcrumb">
+                        <a href="#" onclick="switchPage('projects')">项目</a>
+                        <span>/</span>
+                        <span>智能推荐系统</span>
+                    </div>
+                </div>
+
+                <div class="project-detail-header">
+                    <div class="project-detail-icon" style="background: linear-gradient(135deg, #F59E0B, #D97706);">🤖</div>
+                    <div class="project-detail-info">
+                        <h1>智能推荐系统</h1>
+                        <p class="project-code">AI-2026-001</p>
+                        <p class="project-desc-full">基于深度学习的个性化推荐系统，支持多场景推荐能力。采用协同过滤+深度学习混合方案，目标日活用户1000万。</p>
+                    </div>
+                    <div class="project-detail-actions">
+                        <button class="btn btn-secondary">编辑项目</button>
+                        <button class="btn btn-primary" onclick="showModal('task-modal')">➕ 新建任务</button>
+                    </div>
+                </div>
+
+                <!-- 项目Tab导航 -->
+                <div class="tab-nav">
+                    <button class="tab-item active" data-tab="overview">概览</button>
+                    <button class="tab-item" data-tab="tasks">任务 (20)</button>
+                    <button class="tab-item" data-tab="meetings">会议纪要 (8)</button>
+                    <button class="tab-item" data-tab="members">成员 (5)</button>
+                </div>
+
+                <!-- 概览Tab内容 -->
+                <div class="tab-content active" id="tab-overview">
+                    <div class="detail-grid">
+                        <div class="detail-main">
+                            <!-- 进度卡片 -->
+                            <div class="detail-card">
+                                <h3>📊 项目进度</h3>
+                                <div class="progress-overview">
+                                    <div class="progress-ring">
+                                        <svg viewBox="0 0 36 36">
+                                            <path class="progress-ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                            <path class="progress-ring-fill" stroke-dasharray="40, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                                        </svg>
+                                        <div class="progress-ring-text">40%</div>
+                                    </div>
+                                    <div class="progress-stats">
+                                        <div class="progress-stat">
+                                            <span class="stat-num">8</span>
+                                            <span class="stat-label">已完成</span>
+                                        </div>
+                                        <div class="progress-stat">
+                                            <span class="stat-num">7</span>
+                                            <span class="stat-label">进行中</span>
+                                        </div>
+                                        <div class="progress-stat">
+                                            <span class="stat-num">5</span>
+                                            <span class="stat-label">待办</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 工时统计 -->
+                            <div class="detail-card">
+                                <h3>⏰ 工时统计</h3>
+                                <div class="hours-comparison">
+                                    <div class="hours-bar">
+                                        <div class="hours-label">预估工时</div>
+                                        <div class="hours-track">
+                                            <div class="hours-fill estimated" style="width: 100%;">200h</div>
+                                        </div>
+                                    </div>
+                                    <div class="hours-bar">
+                                        <div class="hours-label">实际工时</div>
+                                        <div class="hours-track">
+                                            <div class="hours-fill actual" style="width: 42.75%;">85.5h</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="hours-note">
+                                    <span class="positive">✓ 工时使用正常，剩余预算充足</span>
+                                </div>
+                            </div>
+
+                            <!-- 最近任务 -->
+                            <div class="detail-card">
+                                <div class="card-header">
+                                    <h3>📋 最近任务</h3>
+                                    <a href="#" class="link-btn">查看全部</a>
+                                </div>
+                                <div class="mini-task-list">
+                                    <div class="mini-task">
+                                        <span class="task-status done">✓</span>
+                                        <span class="task-name">推荐算法核心开发</span>
+                                        <span class="task-assignee">李四</span>
+                                    </div>
+                                    <div class="mini-task">
+                                        <span class="task-status in-progress">●</span>
+                                        <span class="task-name">API接口开发</span>
+                                        <span class="task-assignee">王五</span>
+                                    </div>
+                                    <div class="mini-task">
+                                        <span class="task-status in-progress">●</span>
+                                        <span class="task-name">推荐算法优化</span>
+                                        <span class="task-assignee">张三</span>
+                                    </div>
+                                    <div class="mini-task">
+                                        <span class="task-status todo">○</span>
+                                        <span class="task-name">缓存层设计</span>
+                                        <span class="task-assignee">张三</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="detail-sidebar">
+                            <!-- 项目信息 -->
+                            <div class="detail-card">
+                                <h3>📌 项目信息</h3>
+                                <div class="info-list">
+                                    <div class="info-item">
+                                        <span class="info-label">负责人</span>
+                                        <span class="info-value">
+                                            <span class="mini-avatar">张</span> 张三
+                                        </span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">状态</span>
+                                        <span class="info-value">
+                                            <span class="status-dot active"></span> 进行中
+                                        </span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">优先级</span>
+                                        <span class="info-value priority-high">高</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">开始时间</span>
+                                        <span class="info-value">2026-01-01</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">截止时间</span>
+                                        <span class="info-value">2026-06-30</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <span class="info-label">剩余天数</span>
+                                        <span class="info-value">168 天</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 团队成员 -->
+                            <div class="detail-card">
+                                <h3>👥 团队成员</h3>
+                                <div class="team-list">
+                                    <div class="team-member">
+                                        <div class="member-avatar">张</div>
+                                        <div class="member-info">
+                                            <div class="member-name">张三</div>
+                                            <div class="member-role">负责人</div>
+                                        </div>
+                                        <div class="member-hours">32h</div>
+                                    </div>
+                                    <div class="team-member">
+                                        <div class="member-avatar">李</div>
+                                        <div class="member-info">
+                                            <div class="member-name">李四</div>
+                                            <div class="member-role">算法工程师</div>
+                                        </div>
+                                        <div class="member-hours">28h</div>
+                                    </div>
+                                    <div class="team-member">
+                                        <div class="member-avatar">王</div>
+                                        <div class="member-info">
+                                            <div class="member-name">王五</div>
+                                            <div class="member-role">后端开发</div>
+                                        </div>
+                                        <div class="member-hours">15.5h</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务页面 -->
+            <div id="page-tasks" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1>✅ 任务管理</h1>
+                        <p class="subtitle">跟踪和管理所有任务</p>
+                    </div>
+                    <div class="header-actions">
+                        <div class="view-toggle">
+                            <button class="view-btn active" title="看板视图">▦</button>
+                            <button class="view-btn" title="列表视图">☰</button>
+                        </div>
+                        <button class="btn btn-primary" onclick="showModal('task-modal')">➕ 新建任务</button>
+                    </div>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>项目</label>
+                        <select class="form-select">
+                            <option>全部项目</option>
+                            <option>智能推荐系统</option>
+                            <option>数据分析平台</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>负责人</label>
+                        <select class="form-select">
+                            <option>全部成员</option>
+                            <option>我的任务</option>
+                            <option>张三</option>
+                            <option>李四</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>优先级</label>
+                        <select class="form-select">
+                            <option>全部</option>
+                            <option>🔴 紧急</option>
+                            <option>🟠 高</option>
+                            <option>🟡 中</option>
+                            <option>🟢 低</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 看板视图 - 5列：待办、任务评审、进行中、成果评审、已完成 -->
+                <div class="kanban-board five-col">
+                    <div class="kanban-column">
+                        <div class="column-header">
+                            <span class="column-title">📋 待办</span>
+                            <span class="column-count">3</span>
+                        </div>
+                        <div class="column-subtitle">新建任务</div>
+                        <div class="column-content">
+                            <div class="kanban-card" onclick="showModal('task-detail-modal')">
+                                <div class="card-priority high"></div>
+                                <div class="card-title">缓存层设计</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-meta">
+                                    <span class="card-hours">0h / 8h</span>
+                                    <div class="card-avatar">张</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">技术文档编写</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-meta">
+                                    <span class="card-hours">0h / 4h</span>
+                                    <div class="card-avatar">王</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority low"></div>
+                                <div class="card-title">代码重构</div>
+                                <div class="card-project">数据分析平台</div>
+                                <div class="card-meta">
+                                    <span class="card-hours">0h / 6h</span>
+                                    <div class="card-avatar">李</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column task-review">
+                        <div class="column-header">
+                            <span class="column-title">📝 任务评审</span>
+                            <span class="column-count">2</span>
+                        </div>
+                        <div class="column-subtitle">需求/方案评审（开发前）</div>
+                        <div class="column-content">
+                            <div class="kanban-card">
+                                <div class="card-priority high"></div>
+                                <div class="card-title">分布式计算方案</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-review-info">
+                                    <span class="review-label">📄 方案评审</span>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">待评审</span>
+                                    <div class="card-avatar">张</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">数据导入优化需求</div>
+                                <div class="card-project">数据分析平台</div>
+                                <div class="card-review-info">
+                                    <span class="review-label">📋 需求评审</span>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">待评审</span>
+                                    <div class="card-avatar">赵</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column in-progress">
+                        <div class="column-header">
+                            <span class="column-title">🔄 进行中</span>
+                            <span class="column-count">3</span>
+                        </div>
+                        <div class="column-subtitle">开发实现中</div>
+                        <div class="column-content">
+                            <div class="kanban-card">
+                                <div class="card-priority high"></div>
+                                <div class="card-title">推荐算法优化</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-progress">
+                                    <div class="progress-bar small">
+                                        <div class="progress-fill" style="width: 62.5%;"></div>
+                                    </div>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">25h / 40h</span>
+                                    <div class="card-avatar">李</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">API接口开发</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-progress">
+                                    <div class="progress-bar small">
+                                        <div class="progress-fill" style="width: 60%;"></div>
+                                    </div>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">12h / 20h</span>
+                                    <div class="card-avatar">王</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">数据可视化模块</div>
+                                <div class="card-project">数据分析平台</div>
+                                <div class="card-progress">
+                                    <div class="progress-bar small">
+                                        <div class="progress-fill" style="width: 45%;"></div>
+                                    </div>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">18h / 40h</span>
+                                    <div class="card-avatar">赵</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column result-review">
+                        <div class="column-header">
+                            <span class="column-title">🔍 成果评审</span>
+                            <span class="column-count">2</span>
+                        </div>
+                        <div class="column-subtitle">代码/功能评审（开发后）</div>
+                        <div class="column-content">
+                            <div class="kanban-card">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">单元测试编写</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-review-info">
+                                    <span class="review-label">💻 代码评审</span>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">6h / 6h</span>
+                                    <div class="card-avatar">赵</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card">
+                                <div class="card-priority high"></div>
+                                <div class="card-title">用户画像模块</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-review-info">
+                                    <span class="review-label">🎯 功能评审</span>
+                                </div>
+                                <div class="card-meta">
+                                    <span class="card-hours">16h / 16h</span>
+                                    <div class="card-avatar">李</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="kanban-column done">
+                        <div class="column-header">
+                            <span class="column-title">✅ 已完成</span>
+                            <span class="column-count">6</span>
+                        </div>
+                        <div class="column-subtitle">已验收完成</div>
+                        <div class="column-content">
+                            <div class="kanban-card completed">
+                                <div class="card-priority high"></div>
+                                <div class="card-title">推荐算法核心开发</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-meta">
+                                    <span class="card-hours">42.5h / 40h</span>
+                                    <div class="card-avatar">李</div>
+                                </div>
+                            </div>
+                            <div class="kanban-card completed">
+                                <div class="card-priority medium"></div>
+                                <div class="card-title">需求分析</div>
+                                <div class="card-project">智能推荐系统</div>
+                                <div class="card-meta">
+                                    <span class="card-hours">8h / 8h</span>
+                                    <div class="card-avatar">张</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日报页面 -->
+            <div id="page-daily" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1>📝 日报管理</h1>
+                        <p class="subtitle">记录每日工作内容</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showModal('daily-modal')">✏️ 填写日报</button>
+                </div>
+
+                <div class="tab-nav">
+                    <button class="tab-item active">我的日报</button>
+                    <button class="tab-item">团队日报</button>
+                </div>
+
+                <!-- 日期导航 -->
+                <div class="date-nav">
+                    <button class="date-nav-btn">← 上一周</button>
+                    <div class="date-range">
+                        <span class="current-week">2026年1月 第2周</span>
+                        <span class="date-detail">01-06 ~ 01-12</span>
+                    </div>
+                    <button class="date-nav-btn">下一周 →</button>
+                </div>
+
+                <!-- 日报列表 -->
+                <div class="daily-list">
+                    <div class="daily-card today">
+                        <div class="daily-date">
+                            <div class="date-day">14</div>
+                            <div class="date-weekday">周二</div>
+                            <div class="date-badge">今天</div>
+                        </div>
+                        <div class="daily-content">
+                            <div class="daily-logs">
+                                <div class="daily-log-item">
+                                    <div class="log-project">智能推荐系统</div>
+                                    <div class="log-task">推荐算法优化</div>
+                                    <div class="log-hours">4.5h</div>
+                                    <div class="log-type">开发</div>
+                                    <div class="log-desc">完成推荐算法的性能优化，将推理时间从200ms降低到80ms</div>
+                                </div>
+                                <div class="daily-log-item">
+                                    <div class="log-project">智能推荐系统</div>
+                                    <div class="log-task">API接口联调</div>
+                                    <div class="log-hours">2h</div>
+                                    <div class="log-type">调试</div>
+                                    <div class="log-desc">与前端团队联调推荐接口，解决了数据格式问题</div>
+                                </div>
+                            </div>
+                            <div class="daily-summary">
+                                <div class="summary-item">
+                                    <span class="summary-label">遇到问题</span>
+                                    <span class="summary-text">推荐算法在大数据量下仍有性能瓶颈</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="summary-label">明日计划</span>
+                                    <span class="summary-text">继续优化推荐算法性能，编写单元测试</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="daily-total">
+                            <div class="total-hours">6.5h</div>
+                            <button class="btn btn-small btn-secondary">编辑</button>
+                        </div>
+                    </div>
+
+                    <div class="daily-card">
+                        <div class="daily-date">
+                            <div class="date-day">13</div>
+                            <div class="date-weekday">周一</div>
+                        </div>
+                        <div class="daily-content">
+                            <div class="daily-logs">
+                                <div class="daily-log-item">
+                                    <div class="log-project">智能推荐系统</div>
+                                    <div class="log-task">推荐算法核心开发</div>
+                                    <div class="log-hours">6h</div>
+                                    <div class="log-type">开发</div>
+                                    <div class="log-desc">完成Top-N推荐生成模块的开发</div>
+                                </div>
+                                <div class="daily-log-item">
+                                    <div class="log-project">数据分析平台</div>
+                                    <div class="log-task">Bug修复</div>
+                                    <div class="log-hours">1.5h</div>
+                                    <div class="log-type">调试</div>
+                                    <div class="log-desc">修复数据导入模块的编码问题</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="daily-total">
+                            <div class="total-hours">7.5h</div>
+                            <button class="btn btn-small btn-secondary">查看</button>
+                        </div>
+                    </div>
+
+                    <div class="daily-card empty">
+                        <div class="daily-date">
+                            <div class="date-day">12</div>
+                            <div class="date-weekday">周日</div>
+                        </div>
+                        <div class="daily-content">
+                            <div class="empty-state">
+                                <span class="empty-icon">📭</span>
+                                <span class="empty-text">休息日，无日报记录</span>
+                            </div>
+                        </div>
+                        <div class="daily-total">
+                            <div class="total-hours">-</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 周报页面 -->
+            <div id="page-weekly" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1>📊 周报中心</h1>
+                        <p class="subtitle">AI智能生成周报</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="showModal('generate-weekly-modal')">🤖 生成本周周报</button>
+                </div>
+
+                <div class="tab-nav">
+                    <button class="tab-item active">个人周报</button>
+                    <button class="tab-item">项目周报</button>
+                </div>
+
+                <div class="weekly-list">
+                    <div class="weekly-card">
+                        <div class="weekly-header">
+                            <div class="weekly-period">
+                                <span class="period-label">2026年 第2周</span>
+                                <span class="period-date">01-06 ~ 01-12</span>
+                            </div>
+                            <div class="weekly-status reviewed">
+                                <span class="status-icon">✅</span>
+                                <span>已审核</span>
+                            </div>
+                        </div>
+                        <div class="weekly-stats">
+                            <div class="stat-item">
+                                <span class="stat-value">38.5h</span>
+                                <span class="stat-label">总工时</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">5</span>
+                                <span class="stat-label">完成任务</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">2</span>
+                                <span class="stat-label">参与项目</span>
+                            </div>
+                        </div>
+                        <div class="weekly-preview">
+                            <h4>本周总结</h4>
+                            <p>本周主要参与智能推荐系统项目的核心算法开发工作。完成了基于协同过滤的推荐算法核心模块开发，并进行了性能优化...</p>
+                        </div>
+                        <div class="weekly-actions">
+                            <button class="btn btn-secondary">查看详情</button>
+                            <button class="btn btn-secondary">导出</button>
+                        </div>
+                    </div>
+
+                    <div class="weekly-card">
+                        <div class="weekly-header">
+                            <div class="weekly-period">
+                                <span class="period-label">2026年 第1周</span>
+                                <span class="period-date">12-30 ~ 01-05</span>
+                            </div>
+                            <div class="weekly-status reviewed">
+                                <span class="status-icon">✅</span>
+                                <span>已审核</span>
+                            </div>
+                        </div>
+                        <div class="weekly-stats">
+                            <div class="stat-item">
+                                <span class="stat-value">35h</span>
+                                <span class="stat-label">总工时</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">4</span>
+                                <span class="stat-label">完成任务</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-value">2</span>
+                                <span class="stat-label">参与项目</span>
+                            </div>
+                        </div>
+                        <div class="weekly-preview">
+                            <h4>本周总结</h4>
+                            <p>本周完成项目启动准备工作，参加技术方案评审会议，确定了推荐算法的技术选型...</p>
+                        </div>
+                        <div class="weekly-actions">
+                            <button class="btn btn-secondary">查看详情</button>
+                            <button class="btn btn-secondary">导出</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 数据看板页面 -->
+            <div id="page-analytics" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1>📈 数据看板</h1>
+                        <p class="subtitle">多维度数据分析</p>
+                    </div>
+                </div>
+
+                <div class="tab-nav">
+                    <button class="tab-item active">个人视角</button>
+                    <button class="tab-item">项目视角</button>
+                </div>
+
+                <div class="filter-bar">
+                    <div class="filter-group">
+                        <label>成员</label>
+                        <select class="form-select">
+                            <option>张三（我）</option>
+                            <option>李四</option>
+                            <option>王五</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>时间范围</label>
+                        <select class="form-select">
+                            <option>本周</option>
+                            <option>本月</option>
+                            <option>最近30天</option>
+                            <option>自定义</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 统计卡片 -->
+                <div class="stats-grid four-col">
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #DBEAFE;">⏰</div>
+                        <div class="stat-content">
+                            <div class="stat-value">85.5h</div>
+                            <div class="stat-label">总工时</div>
+                        </div>
+                        <div class="stat-trend up">↑15%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #D1FAE5;">✅</div>
+                        <div class="stat-content">
+                            <div class="stat-value">12</div>
+                            <div class="stat-label">完成任务</div>
+                        </div>
+                        <div class="stat-trend up">↑20%</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #E0E7FF;">📁</div>
+                        <div class="stat-content">
+                            <div class="stat-value">3</div>
+                            <div class="stat-label">参与项目</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon" style="background: #FEF3C7;">📊</div>
+                        <div class="stat-content">
+                            <div class="stat-value">6.1h</div>
+                            <div class="stat-label">日均工时</div>
+                        </div>
+                        <div class="stat-trend up">↑0.3h</div>
+                    </div>
+                </div>
+
+                <div class="analytics-grid">
+                    <!-- 工时分布图 -->
+                    <div class="analytics-card">
+                        <h3>📊 工时项目分布</h3>
+                        <div class="chart-container">
+                            <div class="pie-chart">
+                                <div class="pie-segment" style="--percentage: 70.8; --color: #F59E0B; --rotation: 0;"></div>
+                                <div class="pie-segment" style="--percentage: 29.2; --color: #3B82F6; --rotation: 255;"></div>
+                                <div class="pie-center">
+                                    <div class="pie-total">85.5h</div>
+                                    <div class="pie-label">总工时</div>
+                                </div>
+                            </div>
+                            <div class="chart-legend">
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #F59E0B;"></span>
+                                    <span class="legend-label">智能推荐系统</span>
+                                    <span class="legend-value">60.5h (70.8%)</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span class="legend-color" style="background: #3B82F6;"></span>
+                                    <span class="legend-label">数据平台</span>
+                                    <span class="legend-value">25h (29.2%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 每日工时趋势 -->
+                    <div class="analytics-card">
+                        <h3>📈 每日工时趋势</h3>
+                        <div class="chart-container">
+                            <div class="bar-chart">
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 80%;">
+                                        <span class="bar-value">8h</span>
+                                    </div>
+                                    <span class="bar-label">周一</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 65%;">
+                                        <span class="bar-value">6.5h</span>
+                                    </div>
+                                    <span class="bar-label">周二</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 70%;">
+                                        <span class="bar-value">7h</span>
+                                    </div>
+                                    <span class="bar-label">周三</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 60%;">
+                                        <span class="bar-value">6h</span>
+                                    </div>
+                                    <span class="bar-label">周四</span>
+                                </div>
+                                <div class="bar-item">
+                                    <div class="bar" style="height: 50%;">
+                                        <span class="bar-value">5h</span>
+                                    </div>
+                                    <span class="bar-label">周五</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 任务完成情况 -->
+                    <div class="analytics-card full-width">
+                        <h3>✅ 任务完成情况</h3>
+                        <div class="task-table">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>项目</th>
+                                        <th>任务</th>
+                                        <th>状态</th>
+                                        <th>预估工时</th>
+                                        <th>实际工时</th>
+                                        <th>偏差</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>智能推荐系统</td>
+                                        <td>推荐算法核心开发</td>
+                                        <td><span class="status-badge done">已完成</span></td>
+                                        <td>40h</td>
+                                        <td>42.5h</td>
+                                        <td class="negative">+2.5h</td>
+                                    </tr>
+                                    <tr>
+                                        <td>智能推荐系统</td>
+                                        <td>缓存层设计</td>
+                                        <td><span class="status-badge done">已完成</span></td>
+                                        <td>8h</td>
+                                        <td>7h</td>
+                                        <td class="positive">-1h</td>
+                                    </tr>
+                                    <tr>
+                                        <td>数据平台</td>
+                                        <td>数据导入优化</td>
+                                        <td><span class="status-badge done">已完成</span></td>
+                                        <td>16h</td>
+                                        <td>18h</td>
+                                        <td class="negative">+2h</td>
+                                    </tr>
+                                    <tr>
+                                        <td>智能推荐系统</td>
+                                        <td>推荐算法优化</td>
+                                        <td><span class="status-badge in-progress">进行中</span></td>
+                                        <td>40h</td>
+                                        <td>25h</td>
+                                        <td>-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- 弹窗：填写日报 -->
+    <div id="daily-modal" class="modal">
+        <div class="modal-overlay" onclick="hideModal('daily-modal')"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>📝 填写日报</h2>
+                <button class="modal-close" onclick="hideModal('daily-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label>日期</label>
+                    <input type="date" class="form-input" value="2026-01-14">
+                </div>
+
+                <div class="log-entries">
+                    <h3>工作记录</h3>
+                    
+                    <div class="log-entry">
+                        <div class="entry-header">
+                            <span class="entry-num">#1</span>
+                            <button class="btn-icon delete">🗑️</button>
+                        </div>
+                        <div class="form-grid">
+                            <div class="form-row">
+                                <label>项目 *</label>
+                                <select class="form-select">
+                                    <option>智能推荐系统</option>
+                                    <option>数据平台</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>任务 *</label>
+                                <select class="form-select">
+                                    <option>推荐算法优化</option>
+                                    <option>API接口联调</option>
+                                </select>
+                            </div>
+                            <div class="form-row">
+                                <label>工时 *</label>
+                                <div class="input-with-unit">
+                                    <input type="number" class="form-input" value="4.5">
+                                    <span class="unit">小时</span>
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <label>类型</label>
+                                <select class="form-select">
+                                    <option>开发</option>
+                                    <option>调试</option>
+                                    <option>会议</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-row full">
+                            <label>工作内容 *</label>
+                            <textarea class="form-textarea" placeholder="详细描述今天做了什么工作...">完成推荐算法的性能优化，将推理时间从200ms降低到80ms</textarea>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-dashed btn-block">➕ 添加工作记录</button>
+                </div>
+
+                <div class="form-section">
+                    <h3>其他信息（可选）</h3>
+                    <div class="form-row">
+                        <label>今日遇到的问题</label>
+                        <textarea class="form-textarea" placeholder="记录遇到的问题和困难..."></textarea>
+                    </div>
+                    <div class="form-row">
+                        <label>明日工作计划</label>
+                        <textarea class="form-textarea" placeholder="规划明天的工作内容..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-summary">
+                    <span>今日总工时:</span>
+                    <span class="summary-hours">4.5 小时</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('daily-modal')">取消</button>
+                <button class="btn btn-secondary">保存草稿</button>
+                <button class="btn btn-primary">提交日报</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：新建任务 -->
+    <div id="task-modal" class="modal">
+        <div class="modal-overlay" onclick="hideModal('task-modal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>➕ 新建任务</h2>
+                <button class="modal-close" onclick="hideModal('task-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <label>任务标题 *</label>
+                    <input type="text" class="form-input" placeholder="输入任务标题">
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>所属项目 *</label>
+                        <select class="form-select">
+                            <option>智能推荐系统</option>
+                            <option>数据平台</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>关联会议纪要 *</label>
+                        <select class="form-select">
+                            <option value="">无关联会议</option>
+                            <option>技术方案评审会 (01-10)</option>
+                            <option>项目启动会议 (01-05)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>任务描述</label>
+                    <textarea class="form-textarea" placeholder="详细描述任务内容..."></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>负责人 *</label>
+                        <select class="form-select">
+                            <option>张三</option>
+                            <option>李四</option>
+                            <option>王五</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>任务类型</label>
+                        <select class="form-select">
+                            <option>功能开发</option>
+                            <option>Bug修复</option>
+                            <option>技术调研</option>
+                            <option>文档编写</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>干系人</label>
+                    <p class="form-hint">干系人可参与评审、接收任务通知</p>
+                    <div class="stakeholder-selector">
+                        <div class="stakeholder-list">
+                            <label class="stakeholder-checkbox">
+                                <input type="checkbox"> 张三
+                                <span class="stakeholder-role">(负责人)</span>
+                            </label>
+                            <label class="stakeholder-checkbox">
+                                <input type="checkbox" checked> 李四
+                            </label>
+                            <label class="stakeholder-checkbox">
+                                <input type="checkbox" checked> 王五
+                            </label>
+                            <label class="stakeholder-checkbox">
+                                <input type="checkbox"> 赵六
+                            </label>
+                            <label class="stakeholder-checkbox">
+                                <input type="checkbox"> 钱七
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>预估工时</label>
+                        <div class="input-with-unit">
+                            <input type="number" class="form-input" placeholder="0">
+                            <span class="unit">小时</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <label>优先级</label>
+                        <select class="form-select">
+                            <option>🟡 中</option>
+                            <option>🔴 高</option>
+                            <option>🟠 紧急</option>
+                            <option>🟢 低</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>开始日期</label>
+                        <input type="date" class="form-input">
+                    </div>
+                    <div class="form-row">
+                        <label>截止日期</label>
+                        <input type="date" class="form-input">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('task-modal')">取消</button>
+                <button class="btn btn-primary">创建任务</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：任务详情 -->
+    <div id="task-detail-modal" class="modal">
+        <div class="modal-overlay" onclick="hideModal('task-detail-modal')"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <div class="task-detail-title">
+                    <span class="priority-dot high"></span>
+                    <h2>缓存层设计</h2>
+                    <div class="status-dropdown">
+                        <button class="task-status-badge todo" onclick="toggleStatusMenu()">
+                            待办 <span class="dropdown-icon">▾</span>
+                        </button>
+                        <div class="status-menu" id="status-menu">
+                            <div class="status-menu-item" onclick="changeTaskStatus('in_progress')">
+                                <span class="status-icon">🔄</span> 进行中
+                            </div>
+                            <div class="status-menu-item" onclick="changeTaskStatus('task_review')">
+                                <span class="status-icon">📝</span> 提交任务评审
+                            </div>
+                            <div class="status-menu-item" onclick="changeTaskStatus('result_review')">
+                                <span class="status-icon">🔍</span> 提交成果评审
+                            </div>
+                            <div class="status-menu-item" onclick="changeTaskStatus('done')">
+                                <span class="status-icon">✅</span> 标记完成
+                            </div>
+                            <div class="status-menu-divider"></div>
+                            <div class="status-menu-item reject" onclick="changeTaskStatus('todo')">
+                                <span class="status-icon">↩️</span> 打回修改
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="modal-close" onclick="hideModal('task-detail-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <!-- 状态操作提示栏 -->
+                <div class="status-action-bar" id="status-action-bar">
+                    <div class="action-info">
+                        <span class="action-icon">📋</span>
+                        <span class="action-text">当前状态：<strong>待办</strong>，点击下方按钮开始任务</span>
+                    </div>
+                    <div class="action-buttons-inline">
+                        <button class="btn btn-primary" onclick="changeTaskStatus('in_progress')">▶️ 开始任务</button>
+                    </div>
+                </div>
+
+                <div class="task-detail-grid">
+                    <div class="task-detail-main">
+                        <div class="detail-section">
+                            <h4>任务描述</h4>
+                            <p>设计推荐系统的缓存层架构，使用Redis实现热点数据缓存，提升系统响应速度。</p>
+                        </div>
+                        <div class="detail-section">
+                            <h4>工时记录</h4>
+                            <div class="empty-state small">
+                                <span>暂无工时记录</span>
+                            </div>
+                        </div>
+                        <div class="detail-section">
+                            <h4>状态历史</h4>
+                            <div class="status-timeline">
+                                <div class="timeline-item">
+                                    <div class="timeline-dot"></div>
+                                    <div class="timeline-content">
+                                        <span class="timeline-action">张三 创建了任务</span>
+                                        <span class="timeline-time">2026-01-10 11:00</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="task-detail-sidebar">
+                        <div class="detail-info-card">
+                            <div class="info-row">
+                                <span class="label">项目</span>
+                                <span class="value">智能推荐系统</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">关联会议</span>
+                                <span class="value link">技术方案评审会</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">负责人</span>
+                                <span class="value"><span class="mini-avatar">张</span> 张三</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">干系人</span>
+                                <span class="value">
+                                    <span class="mini-avatar">李</span>
+                                    <span class="mini-avatar">王</span>
+                                    <span class="stakeholder-more">+1</span>
+                                </span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">优先级</span>
+                                <span class="value priority-high">🔴 高</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">预估工时</span>
+                                <span class="value">8 小时</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">实际工时</span>
+                                <span class="value">0 小时</span>
+                            </div>
+                            <div class="info-row">
+                                <span class="label">截止日期</span>
+                                <span class="value">2026-01-20</span>
+                            </div>
+                        </div>
+                        
+                        <!-- 干系人详情 -->
+                        <div class="detail-info-card stakeholders-card">
+                            <h4>👥 干系人 (3人)</h4>
+                            <div class="stakeholder-detail-list">
+                                <div class="stakeholder-detail-item">
+                                    <span class="mini-avatar">李</span>
+                                    <div class="stakeholder-info">
+                                        <span class="name">李四</span>
+                                        <span class="role">评审人</span>
+                                    </div>
+                                </div>
+                                <div class="stakeholder-detail-item">
+                                    <span class="mini-avatar">王</span>
+                                    <div class="stakeholder-info">
+                                        <span class="name">王五</span>
+                                        <span class="role">协作者</span>
+                                    </div>
+                                </div>
+                                <div class="stakeholder-detail-item">
+                                    <span class="mini-avatar">赵</span>
+                                    <div class="stakeholder-info">
+                                        <span class="name">赵六</span>
+                                        <span class="role">干系人</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button class="btn btn-secondary btn-block">编辑任务</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：创建会议纪要 -->
+    <div id="meeting-modal" class="modal">
+        <div class="modal-overlay" onclick="hideModal('meeting-modal')"></div>
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>📋 创建会议纪要</h2>
+                <button class="modal-close" onclick="hideModal('meeting-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>所属项目 *</label>
+                        <select class="form-select">
+                            <option>智能推荐系统</option>
+                            <option>数据平台</option>
+                            <option>知识图谱项目</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label>会议类型</label>
+                        <select class="form-select">
+                            <option>需求评审会</option>
+                            <option>技术方案评审会</option>
+                            <option>代码评审会</option>
+                            <option>项目进度会</option>
+                            <option>其他</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>会议标题 *</label>
+                    <input type="text" class="form-input" placeholder="输入会议标题">
+                </div>
+                <div class="form-grid">
+                    <div class="form-row">
+                        <label>会议日期 *</label>
+                        <input type="date" class="form-input" value="2026-01-14">
+                    </div>
+                    <div class="form-row">
+                        <label>会议时间</label>
+                        <input type="time" class="form-input" value="10:00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>会议地点</label>
+                    <input type="text" class="form-input" placeholder="会议室/腾讯会议链接">
+                </div>
+                <div class="form-row">
+                    <label>参会人员 *</label>
+                    <div class="attendee-selector-full">
+                        <div class="attendee-list">
+                            <label class="attendee-checkbox">
+                                <input type="checkbox" checked> 张三
+                            </label>
+                            <label class="attendee-checkbox">
+                                <input type="checkbox" checked> 李四
+                            </label>
+                            <label class="attendee-checkbox">
+                                <input type="checkbox"> 王五
+                            </label>
+                            <label class="attendee-checkbox">
+                                <input type="checkbox"> 赵六
+                            </label>
+                            <label class="attendee-checkbox">
+                                <input type="checkbox"> 钱七
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>会议摘要 *</label>
+                    <textarea class="form-textarea" placeholder="简述会议主要议题和结论..."></textarea>
+                </div>
+                <div class="form-row">
+                    <label>会议详细内容</label>
+                    <textarea class="form-textarea large" placeholder="详细记录会议讨论内容、决议事项等...
+
+## 一、议题回顾
+1. ...
+
+## 二、讨论结果
+1. ...
+
+## 三、后续行动项
+1. ..."></textarea>
+                </div>
+                <div class="form-section">
+                    <h3>📌 会议产生的任务</h3>
+                    <p class="form-hint">可在创建会议纪要后，单独创建关联此会议的任务</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('meeting-modal')">取消</button>
+                <button class="btn btn-secondary">保存草稿</button>
+                <button class="btn btn-primary">创建会议纪要</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 弹窗：生成周报 -->
+    <div id="generate-weekly-modal" class="modal">
+        <div class="modal-overlay" onclick="hideModal('generate-weekly-modal')"></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🤖 AI生成周报</h2>
+                <button class="modal-close" onclick="hideModal('generate-weekly-modal')">✕</button>
+            </div>
+            <div class="modal-body">
+                <div class="ai-generate-info">
+                    <div class="ai-icon">🤖</div>
+                    <h3>智能周报生成</h3>
+                    <p>AI将根据您本周的日报记录，自动生成结构化的周报内容。</p>
+                </div>
+                <div class="form-row">
+                    <label>周报类型</label>
+                    <div class="radio-group">
+                        <label class="radio-item">
+                            <input type="radio" name="report-type" checked>
+                            <span>个人周报</span>
+                        </label>
+                        <label class="radio-item">
+                            <input type="radio" name="report-type">
+                            <span>项目周报</span>
+                        </label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <label>选择周次</label>
+                    <select class="form-select">
+                        <option>2026年 第2周 (01-06 ~ 01-12)</option>
+                        <option>2026年 第1周 (12-30 ~ 01-05)</option>
+                    </select>
+                </div>
+                <div class="data-preview">
+                    <h4>📊 本周数据预览</h4>
+                    <div class="preview-stats">
+                        <div class="preview-stat">
+                            <span class="value">38.5h</span>
+                            <span class="label">工时记录</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="value">5</span>
+                            <span class="label">完成任务</span>
+                        </div>
+                        <div class="preview-stat">
+                            <span class="value">12</span>
+                            <span class="label">日报条目</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="hideModal('generate-weekly-modal')">取消</button>
+                <button class="btn btn-primary">🚀 开始生成</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
