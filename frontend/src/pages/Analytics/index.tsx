@@ -50,8 +50,8 @@ export default function Analytics() {
     { name: '待办', value: tasks.filter(t => t.status === 'todo').length, color: '#6B7280' },
     { name: '任务评审', value: tasks.filter(t => t.status === 'task_review').length, color: '#4F46E5' },
     { name: '进行中', value: tasks.filter(t => t.status === 'in_progress').length, color: '#3B82F6' },
-    { name: '成果评审', value: tasks.filter(t => t.status === 'outcome_review').length, color: '#F59E0B' },
-    { name: '已完成', value: tasks.filter(t => t.status === 'completed').length, color: '#10B981' },
+    { name: '成果评审', value: tasks.filter(t => t.status === 'result_review').length, color: '#F59E0B' },
+    { name: '已完成', value: tasks.filter(t => t.status === 'done').length, color: '#10B981' },
   ].filter(d => d.value > 0)
 
   // 项目状态统计
