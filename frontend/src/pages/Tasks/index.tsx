@@ -272,7 +272,7 @@ export default function Tasks() {
     return creatorId === user.id
   }
 
-  // 判断是否可以修改状态（管理员、创建者、审核人）
+  // 判断是否可以修改状态（仅管理员、创建者）
   const canChangeStatus = (task?: Task | TaskDetail | null) => {
     const t = task || selectedTask
     if (!t || !user) return false
@@ -280,9 +280,6 @@ export default function Tasks() {
     // 创建者可以修改状态
     const creatorId = (t as any).created_by?.id
     if (creatorId === user.id) return true
-    // 审核人可以修改状态
-    const isStakeholder = t.stakeholders?.some((s: any) => (s.member_id || s.member?.id) === user.id)
-    if (isStakeholder) return true
     return false
   }
 

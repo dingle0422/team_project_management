@@ -548,10 +548,23 @@ def update_task(
             detail="只有创建者或管理员可以修改此任务"
         )
     
-    # 更新字段
-    update_data = task_in.model_dump(exclude_unset=True)
+    # 更新字段（排除 stakeholder_ids，单独处理）
+    update_data = task_in.model_dump(exclude_unset=True, exclude={'stakeholder_ids'})
     for field, value in update_data.items():
         setattr(task, field, value)
+    
+    # 处理审核人更新
+    if task_in.stakeholder_ids is not None:
+        # 删除现有审核人
+        db.query(TaskStakeholder).filter(TaskStakeholder.task_id == task_id).delete()
+        # 添加新的审核人
+        for member_id in task_in.stakeholder_ids:
+            ts = TaskStakeholder(
+                task_id=task_id,
+                member_id=member_id,
+                role="stakeholder",
+            )
+            db.add(ts)
     
     db.commit()
     db.refresh(task)
@@ -608,7 +621,7 @@ def change_task_status(
     status_change: TaskStatusChange,
 ):
     """
-    变更任务状态（负责人、干系人、创建者或管理员可操作）
+    变更任务状态（仅创建者或管理员可操作）
     
     状态流转规则:
     - todo → task_review（提交任务评审）
@@ -620,7 +633,7 @@ def change_task_status(
     - 任何状态 → cancelled（取消）
     - cancelled → todo（重新激活）
     
-    当创建者/负责人变更状态时，如果有干系人，需要干系人全票通过才能变更
+    当创建者变更状态时，如果有审核人，需要审核人全票通过才能变更
     """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -629,18 +642,14 @@ def change_task_status(
             detail="Task not found"
         )
     
-    # 权限检查：负责人、干系人、创建者或管理员可以变更状态
-    is_assignee = task.assignee_id == current_user.id
-    is_stakeholder = db.query(TaskStakeholder).filter(
-        TaskStakeholder.task_id == task_id,
-        TaskStakeholder.member_id == current_user.id
-    ).first() is not None
-    is_creator_or_admin = check_owner_or_admin(current_user, task.created_by)
+    # 权限检查：只有创建者或管理员可以变更状态
+    is_creator = task.created_by == current_user.id
+    is_admin = current_user.role == "admin"
     
-    if not (is_assignee or is_stakeholder or is_creator_or_admin):
+    if not (is_creator or is_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有负责人、干系人、创建者或管理员可以变更任务状态"
+            detail="只有创建者或管理员可以变更任务状态"
         )
     
     new_status = status_change.new_status
@@ -681,9 +690,8 @@ def change_task_status(
     elif current_status == "result_review":
         review_type = "result_review"
     
-    # 如果是创建者/负责人变更状态，且有干系人，需要创建待审批流程
-    is_creator_or_assignee = (task.created_by == current_user.id) or (task.assignee_id == current_user.id)
-    needs_approval = is_creator_or_assignee and len(stakeholders) > 0 and new_status != TASK_STATUS_CANCELLED
+    # 如果是创建者变更状态，且有审核人，需要创建待审批流程
+    needs_approval = is_creator and len(stakeholders) > 0 and new_status != TASK_STATUS_CANCELLED
     
     if needs_approval:
         # 创建待审批的状态变更记录（不实际变更状态）

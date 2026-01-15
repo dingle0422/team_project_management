@@ -146,6 +146,7 @@ class TaskUpdate(BaseModel):
     start_date: Optional[date] = None
     due_date: Optional[date] = None
     sort_order: Optional[int] = None
+    stakeholder_ids: Optional[List[int]] = Field(None, description="审核人ID列表")
 
 
 # ==================== 响应模型 ====================
