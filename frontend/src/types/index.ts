@@ -185,7 +185,8 @@ export interface LoginRequest {
 export interface LoginResponse {
   access_token: string
   token_type: string
-  member: Member
+  expires_in: number
+  user: Member
 }
 
 // 统计数据

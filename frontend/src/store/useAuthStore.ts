@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { Member } from '@/types'
+import type { Member, LoginResponse } from '@/types'
 import { authApi } from '@/services/api'
 
 interface AuthState {
@@ -25,14 +25,14 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string) => {
         set({ isLoading: true })
         try {
-          const response = await authApi.login({ email, password })
-          const { access_token, member } = response.data
+          // axios 拦截器已返回 response.data，直接就是 LoginResponse
+          const { access_token, user } = await authApi.login({ email, password }) as unknown as LoginResponse
           
           localStorage.setItem('token', access_token)
           
           set({
             token: access_token,
-            user: member,
+            user: user,
             isAuthenticated: true,
             isLoading: false,
           })
