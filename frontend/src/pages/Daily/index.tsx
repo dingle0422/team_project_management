@@ -79,11 +79,12 @@ export default function Daily() {
     tomorrow_plan?: string
   }) => {
     try {
-      const task = myTasks.find(t => t.id === values.task_id)
+      const workDate = selectedDate.format('YYYY-MM-DD')
       await dailyLogsApi.quickSubmit({
-        work_date: selectedDate.format('YYYY-MM-DD'),
-        logs: [{
+        report_date: workDate,
+        work_logs: [{
           task_id: values.task_id,
+          work_date: workDate,
           hours: values.hours,
           description: values.description,
           work_type: values.work_type,
