@@ -20,6 +20,7 @@ class Task(Base):
     # 任务基本信息
     title: Mapped[str] = mapped_column(String(200), nullable=False, comment="任务标题")
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="任务描述")
+    requester_name: Mapped[str | None] = mapped_column(String(100), nullable=True, comment="需求方名称")
     
     # 负责人和干系人
     assignee_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("members.id", ondelete="SET NULL"), nullable=True, comment="负责人ID")

@@ -80,8 +80,9 @@ export interface Task {
   meeting?: { id: number; title: string }
   title: string
   description?: string
+  requester_name?: string  // 需求方（文本）
   assignee_id?: number
-  assignee?: MemberBrief  // 需求方
+  assignee?: MemberBrief
   estimated_hours?: number
   actual_hours?: number
   status: TaskStatus

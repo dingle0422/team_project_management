@@ -116,6 +116,7 @@ class TaskBase(BaseModel):
     """任务基础信息"""
     title: str = Field(..., min_length=1, max_length=200, description="任务标题")
     description: Optional[str] = Field(None, description="任务描述")
+    requester_name: Optional[str] = Field(None, max_length=100, description="需求方名称")
     estimated_hours: Optional[Decimal] = Field(None, ge=0, description="预估工时")
     priority: str = Field("medium", description="优先级: low, medium, high, urgent")
     task_type: Optional[str] = Field(None, description="任务类型: feature, bugfix, research, documentation")
@@ -136,6 +137,7 @@ class TaskUpdate(BaseModel):
     """更新任务"""
     title: Optional[str] = Field(None, min_length=1, max_length=200)
     description: Optional[str] = None
+    requester_name: Optional[str] = Field(None, max_length=100)
     meeting_id: Optional[int] = None
     assignee_id: Optional[int] = None
     estimated_hours: Optional[Decimal] = Field(None, ge=0)

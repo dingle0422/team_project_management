@@ -98,6 +98,7 @@ def convert_task_to_info(db: Session, task: Task) -> TaskInfo:
         id=task.id,
         title=task.title,
         description=task.description,
+        requester_name=task.requester_name,
         project_id=task.project_id,
         project=project_brief,
         meeting_id=task.meeting_id,
@@ -383,12 +384,12 @@ def get_task(
             approvals=approvals,
         )
     
-    # 基础信息
+    # 基础信息（排除 stakeholders，因为会在 TaskDetail 中单独提供）
     info = convert_task_to_info(db, task)
     
     return Response(
         data=TaskDetail(
-            **info.model_dump(),
+            **info.model_dump(exclude={'stakeholders'}),
             stakeholders=stakeholders,
             status_history=status_history,
             sub_tasks=[convert_task_to_info(db, st) for st in sub_tasks],
@@ -440,6 +441,7 @@ def create_task(
         meeting_id=task_in.meeting_id,
         title=task_in.title,
         description=task_in.description,
+        requester_name=task_in.requester_name,
         assignee_id=task_in.assignee_id,
         estimated_hours=task_in.estimated_hours,
         priority=task_in.priority,
@@ -527,7 +529,7 @@ def update_task(
     task_in: TaskUpdate,
 ):
     """
-    更新任务（创建者、需求方或管理员可操作）
+    更新任务（创建者或管理员可操作）
     """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -536,15 +538,14 @@ def update_task(
             detail="Task not found"
         )
     
-    # 权限检查：创建者、需求方（assignee）或管理员可以修改
+    # 权限检查：创建者或管理员可以修改
     is_creator = task.created_by == current_user.id
-    is_assignee = task.assignee_id == current_user.id
     is_admin = current_user.role == "admin"
     
-    if not (is_creator or is_assignee or is_admin):
+    if not (is_creator or is_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有创建者、需求方或管理员可以修改此任务"
+            detail="只有创建者或管理员可以修改此任务"
         )
     
     # 更新字段

@@ -201,7 +201,7 @@ export default function Tasks() {
       editForm.setFieldsValue({
         title: selectedTask.title,
         description: selectedTask.description,
-        assignee_id: selectedTask.assignee?.id,
+        requester_name: selectedTask.requester_name,
         priority: selectedTask.priority,
         estimated_hours: selectedTask.estimated_hours,
         due_date: selectedTask.due_date ? dayjs(selectedTask.due_date) : undefined,
@@ -252,7 +252,7 @@ export default function Tasks() {
     }
   }
 
-  // 判断是否可以编辑（管理员、创建者、需求方）
+  // 判断是否可以编辑（管理员、创建者）
   const canEdit = (task?: Task | TaskDetail | null) => {
     const t = task || selectedTask
     if (!t || !user) return false
@@ -260,9 +260,6 @@ export default function Tasks() {
     // 创建者可以编辑
     const creatorId = (t as any).created_by?.id
     if (creatorId === user.id) return true
-    // 需求方（assignee）可以编辑
-    const assigneeId = t.assignee?.id
-    if (assigneeId === user.id) return true
     return false
   }
 
@@ -275,7 +272,7 @@ export default function Tasks() {
     return creatorId === user.id
   }
 
-  // 判断是否可以修改状态（管理员、创建者、需求方、审核人）
+  // 判断是否可以修改状态（管理员、创建者、审核人）
   const canChangeStatus = (task?: Task | TaskDetail | null) => {
     const t = task || selectedTask
     if (!t || !user) return false
@@ -283,9 +280,6 @@ export default function Tasks() {
     // 创建者可以修改状态
     const creatorId = (t as any).created_by?.id
     if (creatorId === user.id) return true
-    // 需求方可以修改状态
-    const assigneeId = t.assignee?.id
-    if (assigneeId === user.id) return true
     // 审核人可以修改状态
     const isStakeholder = t.stakeholders?.some((s: any) => (s.member_id || s.member?.id) === user.id)
     if (isStakeholder) return true
@@ -338,9 +332,9 @@ export default function Tasks() {
         </div>
         {/* 显示需求方、审核人、创建人 */}
         <div className="kanban-card-people">
-          {task.assignee && (
-            <Tooltip title={`需求方: ${task.assignee.name}`}>
-              <Tag color="orange" style={{ margin: '2px' }}>需求: {task.assignee.name}</Tag>
+          {task.requester_name && (
+            <Tooltip title={`需求方: ${task.requester_name}`}>
+              <Tag color="orange" style={{ margin: '2px' }}>需求: {task.requester_name}</Tag>
             </Tooltip>
           )}
           {task.stakeholders && task.stakeholders.length > 0 && (
@@ -473,16 +467,12 @@ export default function Tasks() {
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item 
-              name="assignee_id" 
+              name="requester_name" 
               label="需求方" 
               style={{ flex: 1 }}
-              rules={[{ required: true, message: '请选择需求方' }]}
+              rules={[{ required: true, message: '请输入需求方' }]}
             >
-              <Select placeholder="选择需求方">
-                {members.map(m => (
-                  <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                ))}
-              </Select>
+              <Input placeholder="输入需求方名称" />
             </Form.Item>
             <Form.Item name="priority" label="优先级" initialValue="medium" style={{ flex: 1 }}>
               <Select>
@@ -602,12 +592,7 @@ export default function Tasks() {
                   <div className="info-item">
                     <span className="label">需求方</span>
                     <span className="value">
-                      {selectedTask.assignee ? (
-                        <Avatar size="small" style={{ background: '#F59E0B', marginRight: 8 }}>
-                          {selectedTask.assignee.name?.charAt(0)}
-                        </Avatar>
-                      ) : null}
-                      {selectedTask.assignee?.name || '未分配'}
+                      {selectedTask.requester_name || '-'}
                     </span>
                   </div>
                   <div className="info-item">
@@ -723,16 +708,12 @@ export default function Tasks() {
                 </Form.Item>
                 <div style={{ display: 'flex', gap: 16 }}>
                   <Form.Item 
-                    name="assignee_id" 
+                    name="requester_name" 
                     label="需求方" 
                     style={{ flex: 1 }}
-                    rules={[{ required: true, message: '请选择需求方' }]}
+                    rules={[{ required: true, message: '请输入需求方' }]}
                   >
-                    <Select placeholder="选择需求方">
-                      {members.map(m => (
-                        <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                      ))}
-                    </Select>
+                    <Input placeholder="输入需求方名称" />
                   </Form.Item>
                   <Form.Item name="priority" label="优先级" style={{ flex: 1 }}>
                     <Select>
