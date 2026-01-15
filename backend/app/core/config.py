@@ -26,10 +26,9 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24小时
     
-    # AI服务配置（阿里百炼）
-    API_KEY: Optional[str] = "sk-fb07e345e2b04562ad5acf2d4bfee8fa"
-    MODEL: str = "qwen3-max"
-    BASE_URL: Optional[str] = None
+    # AI服务配置（阿里百炼 DashScope）
+    DASHSCOPE_API_KEY: Optional[str] = "sk-fb07e345e2b04562ad5acf2d4bfee8fa"
+    DASHSCOPE_MODEL: str = "qwen-max"
     
     # CORS配置
     CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:5173"]

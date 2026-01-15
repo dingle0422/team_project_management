@@ -1,9 +1,10 @@
 """
-AI服务 - 周报生成
+AI服务 - 周报生成（阿里百炼 DashScope）
 """
 import json
 from typing import Optional
-from openai import OpenAI
+import dashscope
+from dashscope import Generation
 from app.core.config import settings
 from app.schemas.weekly_report import PersonalWeeklyData, ProjectWeeklyData
 
@@ -12,17 +13,14 @@ class AIService:
     """AI服务类"""
     
     def __init__(self):
-        self.client = None
-        self.model = settings.OPENAI_MODEL
-        if settings.OPENAI_API_KEY:
-            self.client = OpenAI(
-                api_key=settings.OPENAI_API_KEY,
-                base_url=settings.OPENAI_BASE_URL if settings.OPENAI_BASE_URL else None,
-            )
+        self.api_key = settings.DASHSCOPE_API_KEY
+        self.model = settings.DASHSCOPE_MODEL
+        if self.api_key:
+            dashscope.api_key = self.api_key
     
     def is_available(self) -> bool:
         """检查AI服务是否可用"""
-        return self.client is not None
+        return self.api_key is not None
     
     def generate_personal_weekly_report(self, data: PersonalWeeklyData) -> dict:
         """
@@ -36,12 +34,7 @@ class AIService:
         prompt = self._build_personal_report_prompt(data)
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """你是一个专业的项目管理助手，擅长撰写工作周报。
+            system_prompt = """你是一个专业的项目管理助手，擅长撰写工作周报。
 请根据提供的工作数据生成一份结构清晰、内容专业的个人周报。
 周报应该：
 1. 总结本周主要工作内容和成果
@@ -54,17 +47,27 @@ class AIService:
 - achievements: 主要成果（列表形式，每项一行）
 - issues: 问题与风险（如有）
 - next_week_plan: 下周计划（列表形式）"""
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+
+            response = Generation.call(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
                 ],
+                result_format='message',
                 temperature=0.7,
-                response_format={"type": "json_object"},
             )
             
-            result = json.loads(response.choices[0].message.content)
+            if response.status_code != 200:
+                raise Exception(f"DashScope API错误: {response.code} - {response.message}")
+            
+            content = response.output.choices[0].message.content
+            # 尝试提取JSON内容（处理可能的markdown代码块）
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            result = json.loads(content)
             return {
                 "summary": result.get("summary", ""),
                 "achievements": result.get("achievements", ""),
@@ -87,12 +90,7 @@ class AIService:
         prompt = self._build_project_report_prompt(data)
         
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {
-                        "role": "system",
-                        "content": """你是一个专业的项目管理助手，擅长撰写项目周报。
+            system_prompt = """你是一个专业的项目管理助手，擅长撰写项目周报。
 请根据提供的项目数据生成一份结构清晰、内容专业的项目周报。
 周报应该：
 1. 总结项目本周整体进展
@@ -105,17 +103,27 @@ class AIService:
 - achievements: 本周主要成果（列表形式）
 - issues: 问题与风险（列表形式，包含影响和建议措施）
 - next_week_plan: 下周计划（列表形式）"""
-                    },
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
+
+            response = Generation.call(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": prompt}
                 ],
+                result_format='message',
                 temperature=0.7,
-                response_format={"type": "json_object"},
             )
             
-            result = json.loads(response.choices[0].message.content)
+            if response.status_code != 200:
+                raise Exception(f"DashScope API错误: {response.code} - {response.message}")
+            
+            content = response.output.choices[0].message.content
+            # 尝试提取JSON内容（处理可能的markdown代码块）
+            if "```json" in content:
+                content = content.split("```json")[1].split("```")[0].strip()
+            elif "```" in content:
+                content = content.split("```")[1].split("```")[0].strip()
+            result = json.loads(content)
             return {
                 "summary": result.get("summary", ""),
                 "achievements": result.get("achievements", ""),
