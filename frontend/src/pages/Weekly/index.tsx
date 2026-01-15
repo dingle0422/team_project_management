@@ -223,7 +223,7 @@ export default function Weekly() {
                 <p className="report-period">
                   {report.week_start} ~ {report.week_end}
                 </p>
-                <p className="report-summary">{report.summary}</p>
+                <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
                 <div className="report-footer">
                   {report.ai_model && (
                     <Tag icon={<RobotOutlined />} color="purple">
@@ -356,27 +356,31 @@ export default function Weekly() {
 
                 <div className="report-section">
                   <h4>📝 本周总结</h4>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_summary || selectedReport.summary || '暂无内容'}</p>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>
+                    {(selectedReport.edited_summary || selectedReport.summary)?.trim() || '暂无内容'}
+                  </p>
                 </div>
 
                 <div className="report-section">
                   <h4>✅ 主要成果</h4>
-                  <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_achievements || selectedReport.achievements || '暂无内容'}</p>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>
+                    {(selectedReport.edited_achievements || selectedReport.achievements)?.trim() || '暂无内容'}
+                  </p>
                 </div>
 
-                {(selectedReport.edited_issues || selectedReport.issues) && (
-                  <div className="report-section">
-                    <h4>⚠️ 问题与挑战</h4>
-                    <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_issues || selectedReport.issues}</p>
-                  </div>
-                )}
+                <div className="report-section">
+                  <h4>⚠️ 问题与挑战</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>
+                    {(selectedReport.edited_issues || selectedReport.issues)?.trim() || '暂无问题'}
+                  </p>
+                </div>
 
-                {(selectedReport.edited_next_week_plan || selectedReport.next_week_plan) && (
-                  <div className="report-section">
-                    <h4>📅 下周计划</h4>
-                    <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_next_week_plan || selectedReport.next_week_plan}</p>
-                  </div>
-                )}
+                <div className="report-section">
+                  <h4>📅 下周计划</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>
+                    {(selectedReport.edited_next_week_plan || selectedReport.next_week_plan)?.trim() || '暂无计划'}
+                  </p>
+                </div>
 
                 <div className="report-meta">
                   <span>生成时间: {dayjs(selectedReport.generated_at).format('YYYY-MM-DD HH:mm')}</span>

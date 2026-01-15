@@ -141,6 +141,11 @@ def list_weekly_reports(
             project=project_brief,
             week_start=r.week_start,
             week_end=r.week_end,
+            summary=r.edited_summary or r.summary,
+            achievements=r.edited_achievements or r.achievements,
+            issues=r.edited_issues or r.issues,
+            next_week_plan=r.edited_next_week_plan or r.next_week_plan,
+            ai_model=r.ai_model,
             is_reviewed=r.is_reviewed,
             generated_at=r.generated_at,
         ))

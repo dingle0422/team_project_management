@@ -81,6 +81,12 @@ class WeeklyReportListItem(BaseModel):
     project: Optional[ProjectBrief] = None
     week_start: date
     week_end: date
+    # 添加内容字段用于预览
+    summary: Optional[str] = None
+    achievements: Optional[str] = None
+    issues: Optional[str] = None
+    next_week_plan: Optional[str] = None
+    ai_model: Optional[str] = None
     is_reviewed: bool
     generated_at: datetime
     
