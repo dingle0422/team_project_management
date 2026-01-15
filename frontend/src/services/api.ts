@@ -249,6 +249,16 @@ export const weeklyReportsApi = {
   getById: (id: number): Promise<ApiResponse<WeeklyReport>> =>
     api.get(`/weekly-reports/${id}`),
   
+  // 检查周报是否存在
+  checkExists: (params: {
+    report_type: string
+    week_start: string
+    week_end: string
+    project_id?: number
+    member_id?: number
+  }): Promise<ApiResponse<{ exists: boolean; report_id: number | null }>> =>
+    api.get('/weekly-reports/check-exists', { params }),
+  
   // 生成个人周报
   generatePersonal: (data: { week_start: string; week_end: string }): Promise<ApiResponse<WeeklyReport>> =>
     api.post('/weekly-reports/generate/personal', data),

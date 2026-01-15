@@ -540,15 +540,23 @@ export default function Tasks() {
                   </div>
                   <div className="info-item">
                     <span className="label">预估工时</span>
-                    <span className="value">{selectedTask.estimated_hours || '-'}h</span>
+                    <span className="value">{selectedTask.estimated_hours ? `${selectedTask.estimated_hours}h` : '-'}</span>
                   </div>
                   <div className="info-item">
                     <span className="label">实际工时</span>
-                    <span className="value">{selectedTask.actual_hours || '-'}h</span>
+                    <span className="value">{selectedTask.actual_hours ? `${Number(selectedTask.actual_hours)}h` : '-'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">开始日期</span>
+                    <span className="value">{selectedTask.start_date || '-'}</span>
                   </div>
                   <div className="info-item">
                     <span className="label">截止日期</span>
                     <span className="value">{selectedTask.due_date || '-'}</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">创建时间</span>
+                    <span className="value">{selectedTask.created_at ? dayjs(selectedTask.created_at).format('YYYY-MM-DD HH:mm') : '-'}</span>
                   </div>
                 </div>
                 {selectedTask.stakeholders && selectedTask.stakeholders.length > 0 && (

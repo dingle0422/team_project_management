@@ -190,13 +190,18 @@ def list_my_tasks(
     status: Optional[str] = Query(None, description="状态筛选"),
 ):
     """
-    获取我的任务列表
+    获取我的任务列表（包括分配给我的任务和我创建的任务）
     """
     query = db.query(Task).options(
         joinedload(Task.project),
         joinedload(Task.assignee),
         joinedload(Task.creator)
-    ).filter(Task.assignee_id == current_user.id)
+    ).filter(
+        or_(
+            Task.assignee_id == current_user.id,
+            Task.created_by == current_user.id
+        )
+    )
     
     if status:
         query = query.filter(Task.status == status)
