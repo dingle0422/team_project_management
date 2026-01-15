@@ -89,7 +89,7 @@ export default function Login() {
 
           <div className="login-footer">
             <p>
-              测试账号: <code>admin@team.com</code> / <code>admin123</code>
+              测试账号: <code>admin@example.com</code> / <code>admin123</code>
             </p>
           </div>
         </div>

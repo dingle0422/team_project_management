@@ -92,5 +92,5 @@ VITE_API_URL=http://localhost:8000
 
 ## 测试账号
 
-- 管理员: `admin@team.com` / `admin123`
+- 管理员: `admin@example.com` / `admin123`
 - 普通成员: `member@team.com` / `member123`
