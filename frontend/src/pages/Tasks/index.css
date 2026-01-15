@@ -111,13 +111,26 @@
   gap: 4px;
 }
 
-.kanban-card-footer {
+.kanban-card-people {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
   margin-top: var(--spacing-sm);
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--gray-100);
+}
+
+.kanban-card-people .ant-tag {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 1px 6px;
+}
+
+.kanban-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin-top: var(--spacing-xs);
 }
 
 .hours {

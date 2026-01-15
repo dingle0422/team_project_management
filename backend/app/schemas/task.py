@@ -161,6 +161,7 @@ class TaskInfo(TaskBase):
     parent_task_id: Optional[int] = None
     sort_order: int = 0
     stakeholder_count: int = 0
+    stakeholders: List[TaskStakeholderInfo] = []  # 审核人列表
     sub_task_count: int = 0
     created_by: Optional[MemberBrief] = None
     created_at: datetime

@@ -81,7 +81,7 @@ export interface Task {
   title: string
   description?: string
   assignee_id?: number
-  assignee?: MemberBrief
+  assignee?: MemberBrief  // 需求方
   estimated_hours?: number
   actual_hours?: number
   status: TaskStatus
@@ -90,7 +90,8 @@ export interface Task {
   due_date?: string
   completed_at?: string
   parent_task_id?: number
-  stakeholders?: TaskStakeholder[]
+  stakeholders?: TaskStakeholder[]  // 审核人
+  created_by?: MemberBrief  // 创建人
   created_at: string
   updated_at: string
 }

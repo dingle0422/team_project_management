@@ -56,12 +56,13 @@ export default function Weekly() {
   const filteredReports = useMemo(() => {
     let result = reports.filter(r => r.report_type === activeTab)
     
-    // 应用筛选
+    // 应用筛选 - 使用 member?.id 和 project?.id 而不是 member_id / project_id
+    // 因为后端返回的列表数据中只有嵌套的 member/project 对象
     if (activeTab === 'personal' && filterMemberId) {
-      result = result.filter(r => r.member_id === filterMemberId)
+      result = result.filter(r => r.member?.id === filterMemberId)
     }
     if (activeTab === 'project' && filterProjectId) {
-      result = result.filter(r => r.project_id === filterProjectId)
+      result = result.filter(r => r.project?.id === filterProjectId)
     }
     
     // 按生成时间倒序排列

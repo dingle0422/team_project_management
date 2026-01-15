@@ -252,6 +252,20 @@ export default function Tasks() {
     }
   }
 
+  // 判断是否可以编辑（管理员、创建者、需求方）
+  const canEdit = (task?: Task | TaskDetail | null) => {
+    const t = task || selectedTask
+    if (!t || !user) return false
+    if (user.role === 'admin') return true
+    // 创建者可以编辑
+    const creatorId = (t as any).created_by?.id
+    if (creatorId === user.id) return true
+    // 需求方（assignee）可以编辑
+    const assigneeId = t.assignee?.id
+    if (assigneeId === user.id) return true
+    return false
+  }
+
   // 判断是否可以删除（创建者或管理员）
   const canDelete = () => {
     if (!selectedTask || !user) return false
@@ -261,18 +275,38 @@ export default function Tasks() {
     return creatorId === user.id
   }
 
+  // 判断是否可以修改状态（管理员、创建者、需求方、审核人）
+  const canChangeStatus = (task?: Task | TaskDetail | null) => {
+    const t = task || selectedTask
+    if (!t || !user) return false
+    if (user.role === 'admin') return true
+    // 创建者可以修改状态
+    const creatorId = (t as any).created_by?.id
+    if (creatorId === user.id) return true
+    // 需求方可以修改状态
+    const assigneeId = t.assignee?.id
+    if (assigneeId === user.id) return true
+    // 审核人可以修改状态
+    const isStakeholder = t.stakeholders?.some((s: any) => (s.member_id || s.member?.id) === user.id)
+    if (isStakeholder) return true
+    return false
+  }
+
   // 渲染任务卡片
   const renderTaskCard = (task: Task) => {
     const priorityConfig = PRIORITY_CONFIG[task.priority]
+    const canModifyStatus = canChangeStatus(task)
     
-    // 只显示可转换的状态
-    const menuItems: MenuProps['items'] = KANBAN_COLUMNS
-      .filter(s => s !== task.status && canTransitionTo(task.status, s))
-      .map(status => ({
-        key: status,
-        label: `移至 ${STATUS_CONFIG[status].label}`,
-        onClick: () => handleStatusChange(task.id, status),
-      }))
+    // 只显示可转换的状态（如果有权限）
+    const menuItems: MenuProps['items'] = canModifyStatus 
+      ? KANBAN_COLUMNS
+          .filter(s => s !== task.status && canTransitionTo(task.status, s))
+          .map(status => ({
+            key: status,
+            label: `移至 ${STATUS_CONFIG[status].label}`,
+            onClick: () => handleStatusChange(task.id, status),
+          }))
+      : []
 
     return (
       <div key={task.id} className="kanban-card" onClick={() => openTaskDetail(task)}>
@@ -280,14 +314,16 @@ export default function Tasks() {
           <Tag color={priorityConfig.color} style={{ margin: 0 }}>
             {priorityConfig.label}
           </Tag>
-          <Dropdown menu={{ items: menuItems }} trigger={['click']}>
-            <Button 
-              type="text" 
-              size="small" 
-              icon={<MoreOutlined />}
-              onClick={e => e.stopPropagation()}
-            />
-          </Dropdown>
+          {canModifyStatus && menuItems.length > 0 && (
+            <Dropdown menu={{ items: menuItems }} trigger={['click']}>
+              <Button 
+                type="text" 
+                size="small" 
+                icon={<MoreOutlined />}
+                onClick={e => e.stopPropagation()}
+              />
+            </Dropdown>
+          )}
         </div>
         <div className="kanban-card-title">{task.title}</div>
         <div className="kanban-card-meta">
@@ -300,16 +336,30 @@ export default function Tasks() {
             </Tooltip>
           )}
         </div>
-        <div className="kanban-card-footer">
-          {task.assignee ? (
-            <Tooltip title={task.assignee.name}>
-              <Avatar size="small" style={{ background: '#F59E0B' }}>
-                {task.assignee.name?.charAt(0)}
-              </Avatar>
+        {/* 显示需求方、审核人、创建人 */}
+        <div className="kanban-card-people">
+          {task.assignee && (
+            <Tooltip title={`需求方: ${task.assignee.name}`}>
+              <Tag color="orange" style={{ margin: '2px' }}>需求: {task.assignee.name}</Tag>
             </Tooltip>
-          ) : (
-            <Avatar size="small" icon={<UserOutlined />} />
           )}
+          {task.stakeholders && task.stakeholders.length > 0 && (
+            <Tooltip title={`审核人: ${task.stakeholders.map((s: any) => s.name || s.member?.name).join(', ')}`}>
+              <Tag color="blue" style={{ margin: '2px' }}>
+                审核: {task.stakeholders.length > 1 
+                  ? `${(task.stakeholders[0] as any).name || (task.stakeholders[0] as any).member?.name}等${task.stakeholders.length}人`
+                  : (task.stakeholders[0] as any).name || (task.stakeholders[0] as any).member?.name
+                }
+              </Tag>
+            </Tooltip>
+          )}
+          {task.created_by && (
+            <Tooltip title={`创建人: ${task.created_by.name}`}>
+              <Tag color="green" style={{ margin: '2px' }}>创建: {task.created_by.name}</Tag>
+            </Tooltip>
+          )}
+        </div>
+        <div className="kanban-card-footer">
           {task.estimated_hours && (
             <span className="hours">
               <ClockCircleOutlined /> {task.estimated_hours}h
@@ -422,8 +472,13 @@ export default function Tasks() {
             <TextArea rows={3} placeholder="描述任务详情..." />
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
-            <Form.Item name="assignee_id" label="负责人" style={{ flex: 1 }}>
-              <Select placeholder="选择负责人" allowClear>
+            <Form.Item 
+              name="assignee_id" 
+              label="需求方" 
+              style={{ flex: 1 }}
+              rules={[{ required: true, message: '请选择需求方' }]}
+            >
+              <Select placeholder="选择需求方">
                 {members.map(m => (
                   <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
                 ))}
@@ -437,6 +492,17 @@ export default function Tasks() {
               </Select>
             </Form.Item>
           </div>
+          <Form.Item 
+            name="stakeholder_ids" 
+            label="审核人（可多选，创建后会收到通知）"
+            rules={[{ required: true, message: '请选择审核人' }]}
+          >
+            <Select mode="multiple" placeholder="选择审核人">
+              {members.map(m => (
+                <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
             <Form.Item name="estimated_hours" label="预估工时" style={{ flex: 1 }}>
               <InputNumber min={0.5} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
@@ -445,13 +511,6 @@ export default function Tasks() {
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="stakeholder_ids" label="干系人（可多选，创建后会收到通知）">
-            <Select mode="multiple" placeholder="选择干系人" allowClear>
-              {members.map(m => (
-                <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-              ))}
-            </Select>
-          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               创建任务
@@ -483,24 +542,37 @@ export default function Tasks() {
                     {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
                   </Tag>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <Select
-                      value={selectedTask.status}
-                      onChange={(v) => handleStatusChange(selectedTask.id, v)}
-                      style={{ width: 120 }}
-                    >
-                      {KANBAN_COLUMNS.map(s => (
-                        <Select.Option 
-                          key={s} 
-                          value={s}
-                          disabled={!canTransitionTo(selectedTask.status, s)}
-                        >
-                          {STATUS_CONFIG[s].label}
-                        </Select.Option>
-                      ))}
-                    </Select>
-                    <Button icon={<EditOutlined />} onClick={startEditing}>
-                      编辑
-                    </Button>
+                    {canChangeStatus() ? (
+                      <Select
+                        value={selectedTask.status}
+                        onChange={(v) => handleStatusChange(selectedTask.id, v)}
+                        style={{ width: 120 }}
+                      >
+                        {KANBAN_COLUMNS.map(s => (
+                          <Select.Option 
+                            key={s} 
+                            value={s}
+                            disabled={!canTransitionTo(selectedTask.status, s)}
+                          >
+                            {STATUS_CONFIG[s].label}
+                          </Select.Option>
+                        ))}
+                      </Select>
+                    ) : (
+                      <Tag style={{ 
+                        background: STATUS_CONFIG[selectedTask.status]?.bg, 
+                        color: STATUS_CONFIG[selectedTask.status]?.color,
+                        border: 'none',
+                        padding: '4px 12px'
+                      }}>
+                        {STATUS_CONFIG[selectedTask.status]?.label}
+                      </Tag>
+                    )}
+                    {canEdit() && (
+                      <Button icon={<EditOutlined />} onClick={startEditing}>
+                        编辑
+                      </Button>
+                    )}
                     {canDelete() && (
                       <Popconfirm
                         title="确认删除"
@@ -528,7 +600,7 @@ export default function Tasks() {
                 )}
                 <div className="task-detail-info">
                   <div className="info-item">
-                    <span className="label">负责人</span>
+                    <span className="label">需求方</span>
                     <span className="value">
                       {selectedTask.assignee ? (
                         <Avatar size="small" style={{ background: '#F59E0B', marginRight: 8 }}>
@@ -536,6 +608,17 @@ export default function Tasks() {
                         </Avatar>
                       ) : null}
                       {selectedTask.assignee?.name || '未分配'}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">创建人</span>
+                    <span className="value">
+                      {selectedTask.created_by ? (
+                        <Avatar size="small" style={{ background: '#10B981', marginRight: 8 }}>
+                          {selectedTask.created_by.name?.charAt(0)}
+                        </Avatar>
+                      ) : null}
+                      {selectedTask.created_by?.name || '-'}
                     </span>
                   </div>
                   <div className="info-item">
@@ -561,11 +644,11 @@ export default function Tasks() {
                 </div>
                 {selectedTask.stakeholders && selectedTask.stakeholders.length > 0 && (
                   <div className="task-detail-stakeholders">
-                    <h4>干系人</h4>
+                    <h4>审核人</h4>
                     <div className="stakeholder-list">
                       {selectedTask.stakeholders.map((s: any) => (
-                        <Tag key={s.id}>
-                          {s.name || s.member?.name} ({s.role === 'reviewer' ? '评审人' : s.role === 'collaborator' ? '协作者' : '干系人'})
+                        <Tag key={s.id} color="blue">
+                          {s.name || s.member?.name}
                         </Tag>
                       ))}
                     </div>
@@ -639,8 +722,13 @@ export default function Tasks() {
                   <TextArea rows={3} placeholder="描述任务详情..." />
                 </Form.Item>
                 <div style={{ display: 'flex', gap: 16 }}>
-                  <Form.Item name="assignee_id" label="负责人" style={{ flex: 1 }}>
-                    <Select placeholder="选择负责人" allowClear>
+                  <Form.Item 
+                    name="assignee_id" 
+                    label="需求方" 
+                    style={{ flex: 1 }}
+                    rules={[{ required: true, message: '请选择需求方' }]}
+                  >
+                    <Select placeholder="选择需求方">
                       {members.map(m => (
                         <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
                       ))}
@@ -654,6 +742,17 @@ export default function Tasks() {
                     </Select>
                   </Form.Item>
                 </div>
+                <Form.Item 
+                  name="stakeholder_ids" 
+                  label="审核人（可多选）"
+                  rules={[{ required: true, message: '请选择审核人' }]}
+                >
+                  <Select mode="multiple" placeholder="选择审核人">
+                    {members.map(m => (
+                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
                 <div style={{ display: 'flex', gap: 16 }}>
                   <Form.Item name="estimated_hours" label="预估工时" style={{ flex: 1 }}>
                     <InputNumber min={0.5} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
@@ -664,13 +763,6 @@ export default function Tasks() {
                 </div>
                 <Form.Item name="due_date" label="截止日期">
                   <DatePicker style={{ width: '100%' }} />
-                </Form.Item>
-                <Form.Item name="stakeholder_ids" label="干系人（可多选）">
-                  <Select mode="multiple" placeholder="选择干系人" allowClear>
-                    {members.map(m => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
-                  </Select>
                 </Form.Item>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                   <Button onClick={cancelEditing}>取消</Button>

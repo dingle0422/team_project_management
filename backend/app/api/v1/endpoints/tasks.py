@@ -39,10 +39,23 @@ router = APIRouter()
 
 def convert_task_to_info(db: Session, task: Task) -> TaskInfo:
     """将Task转换为TaskInfo"""
-    # 干系人数量
-    stakeholder_count = db.query(func.count(TaskStakeholder.id)).filter(
-        TaskStakeholder.task_id == task.id
-    ).scalar() or 0
+    # 获取干系人（审核人）
+    stakeholders_data = db.query(TaskStakeholder, Member).join(
+        Member, TaskStakeholder.member_id == Member.id
+    ).filter(TaskStakeholder.task_id == task.id).all()
+    
+    stakeholders = [
+        TaskStakeholderInfo(
+            id=ts.id,
+            member_id=member.id,
+            name=member.name,
+            role=ts.role,
+            avatar_url=member.avatar_url,
+        )
+        for ts, member in stakeholders_data
+    ]
+    
+    stakeholder_count = len(stakeholders)
     
     # 子任务数量
     sub_task_count = db.query(func.count(Task.id)).filter(
@@ -100,6 +113,7 @@ def convert_task_to_info(db: Session, task: Task) -> TaskInfo:
         parent_task_id=task.parent_task_id,
         sort_order=task.sort_order,
         stakeholder_count=stakeholder_count,
+        stakeholders=stakeholders,
         sub_task_count=sub_task_count,
         created_by=creator_brief,
         created_at=task.created_at,
@@ -513,7 +527,7 @@ def update_task(
     task_in: TaskUpdate,
 ):
     """
-    更新任务（仅创建者或管理员）
+    更新任务（创建者、需求方或管理员可操作）
     """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -522,11 +536,15 @@ def update_task(
             detail="Task not found"
         )
     
-    # 权限检查
-    if not check_owner_or_admin(current_user, task.created_by):
+    # 权限检查：创建者、需求方（assignee）或管理员可以修改
+    is_creator = task.created_by == current_user.id
+    is_assignee = task.assignee_id == current_user.id
+    is_admin = current_user.role == "admin"
+    
+    if not (is_creator or is_assignee or is_admin):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="只有创建者或管理员可以修改此任务"
+            detail="只有创建者、需求方或管理员可以修改此任务"
         )
     
     # 更新字段
