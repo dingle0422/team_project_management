@@ -18,6 +18,7 @@ class Project(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True, comment="项目描述")
     status: Mapped[str] = mapped_column(String(20), default="active", comment="项目状态: active, completed, suspended, archived")
     priority: Mapped[str] = mapped_column(String(10), default="medium", comment="优先级: low, medium, high")
+    business_party: Mapped[str | None] = mapped_column(String(200), nullable=True, comment="业务方")
     start_date: Mapped[date | None] = mapped_column(Date, nullable=True, comment="开始日期")
     end_date: Mapped[date | None] = mapped_column(Date, nullable=True, comment="截止日期")
     owner_id: Mapped[int | None] = mapped_column(Integer, ForeignKey("members.id", ondelete="SET NULL"), nullable=True, comment="项目负责人ID")

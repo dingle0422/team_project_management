@@ -13,7 +13,7 @@ class ProjectBase(BaseModel):
     """项目基础信息"""
     name: str = Field(..., min_length=1, max_length=100, description="项目名称")
     code: Optional[str] = Field(None, max_length=30, description="项目编号")
-    description: Optional[str] = Field(None, description="项目描述")
+    description: str = Field(..., min_length=1, description="项目描述")
     priority: str = Field("medium", description="优先级: low, medium, high")
     start_date: Optional[date] = Field(None, description="开始日期")
     end_date: Optional[date] = Field(None, description="截止日期")
@@ -21,6 +21,7 @@ class ProjectBase(BaseModel):
 
 class ProjectCreate(ProjectBase):
     """创建项目"""
+    business_party: str = Field(..., min_length=1, max_length=200, description="业务方")
     owner_id: Optional[int] = Field(None, description="负责人ID")
     member_ids: Optional[List[int]] = Field(None, description="成员ID列表")
 
@@ -30,6 +31,7 @@ class ProjectUpdate(BaseModel):
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     code: Optional[str] = Field(None, max_length=30)
     description: Optional[str] = None
+    business_party: Optional[str] = Field(None, max_length=200, description="业务方")
     status: Optional[str] = None
     priority: Optional[str] = None
     start_date: Optional[date] = None
@@ -70,7 +72,10 @@ class ProjectInfo(ProjectBase):
     """项目信息响应"""
     id: int
     status: str
+    business_party: Optional[str] = None
     owner: Optional[MemberBrief] = None
+    creator: Optional[MemberBrief] = None
+    created_by: Optional[int] = None
     member_count: int = 0
     task_stats: Optional[TaskStats] = None
     created_at: datetime

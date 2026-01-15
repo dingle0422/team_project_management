@@ -22,11 +22,14 @@ export interface Project {
   name: string
   code: string
   description?: string
+  business_party?: string  // 业务方
   status: 'planning' | 'active' | 'on_hold' | 'completed' | 'cancelled'
   start_date?: string
   end_date?: string
   owner_id: number
   owner?: MemberBrief
+  created_by?: number  // 创建者ID
+  creator?: MemberBrief  // 创建者信息
   created_at: string
   updated_at: string
 }

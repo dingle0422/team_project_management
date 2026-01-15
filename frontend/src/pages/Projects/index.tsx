@@ -6,7 +6,7 @@ import {
 } from 'antd'
 import { 
   PlusOutlined, TeamOutlined, CalendarOutlined, FolderOutlined,
-  EditOutlined, UnorderedListOutlined, FileTextOutlined, EyeOutlined, DeleteOutlined
+  EditOutlined, UnorderedListOutlined, FileTextOutlined, EyeOutlined, DeleteOutlined, UserOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAppStore } from '@/store/useAppStore'
@@ -83,6 +83,7 @@ export default function Projects() {
         name: selectedProject.name,
         code: selectedProject.code,
         description: selectedProject.description,
+        business_party: selectedProject.business_party,
         status: selectedProject.status,
         start_date: selectedProject.start_date ? dayjs(selectedProject.start_date) : undefined,
         end_date: selectedProject.end_date ? dayjs(selectedProject.end_date) : undefined,
@@ -127,12 +128,11 @@ export default function Projects() {
     }
   }
 
-  // 判断是否可以删除（创建者或管理员）
-  const canDelete = () => {
+  // 判断是否可以编辑/删除（只有创建者可以）
+  const canEditOrDelete = () => {
     if (!selectedProject || !user) return false
-    if (user.role === 'admin') return true
-    // 检查 owner_id 是否是当前用户（假设 owner 是创建者）
-    return selectedProject.owner_id === user.id || (selectedProject as any).created_by === user.id
+    // 只有创建者可以编辑和删除项目
+    return selectedProject.created_by === user.id
   }
 
   // 跳转到任务页面
@@ -236,13 +236,11 @@ export default function Projects() {
                 <p className="project-desc">{project.description}</p>
               )}
               <div className="project-meta">
-                {project.start_date && (
-                  <span>
-                    <CalendarOutlined /> {dayjs(project.start_date).format('YYYY-MM-DD')}
-                  </span>
-                )}
                 <span>
-                  <TeamOutlined /> {project.owner?.name || '-'}
+                  <UserOutlined /> 创建人: {project.creator?.name || '-'}
+                </span>
+                <span>
+                  <TeamOutlined /> 业务方: {project.business_party || '-'}
                 </span>
               </div>
               <Progress 
@@ -287,7 +285,18 @@ export default function Projects() {
           >
             <Input placeholder="例如: PROJ-001" />
           </Form.Item>
-          <Form.Item name="description" label="项目描述">
+          <Form.Item 
+            name="business_party" 
+            label="业务方"
+            rules={[{ required: true, message: '请输入业务方' }]}
+          >
+            <Input placeholder="输入业务方名称" />
+          </Form.Item>
+          <Form.Item 
+            name="description" 
+            label="项目描述"
+            rules={[{ required: true, message: '请输入项目描述' }]}
+          >
             <TextArea rows={3} placeholder="描述项目目标和范围..." />
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>
@@ -345,7 +354,7 @@ export default function Projects() {
               <p style={{ color: '#6B7280', marginBottom: 16 }}>{selectedProject.description}</p>
             )}
             
-            <div style={{ display: 'flex', gap: 16, marginBottom: 20, color: '#6B7280', fontSize: 14 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, marginBottom: 20, color: '#6B7280', fontSize: 14 }}>
               {selectedProject.start_date && (
                 <span><CalendarOutlined /> 开始: {selectedProject.start_date}</span>
               )}
@@ -353,17 +362,21 @@ export default function Projects() {
                 <span><CalendarOutlined /> 截止: {selectedProject.end_date}</span>
               )}
               <span><TeamOutlined /> 负责人: {selectedProject.owner?.name || '-'}</span>
+              <span><UserOutlined /> 创建人: {selectedProject.creator?.name || '-'}</span>
+              <span>📋 业务方: {selectedProject.business_party || '-'}</span>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <Button 
-                type="primary" 
-                icon={<EditOutlined />} 
-                block
-                onClick={openEditModal}
-              >
-                编辑项目
-              </Button>
+              {canEditOrDelete() && (
+                <Button 
+                  type="primary" 
+                  icon={<EditOutlined />} 
+                  block
+                  onClick={openEditModal}
+                >
+                  编辑项目
+                </Button>
+              )}
               <Button 
                 icon={<UnorderedListOutlined />} 
                 block
@@ -378,7 +391,7 @@ export default function Projects() {
               >
                 会议纪要
               </Button>
-              {canDelete() && (
+              {canEditOrDelete() && (
                 <Popconfirm
                   title="确认删除"
                   description="确定要删除这个项目吗？此操作不可撤销，项目下的所有任务也将被删除。"
@@ -423,7 +436,18 @@ export default function Projects() {
           >
             <Input placeholder="例如: PROJ-001" />
           </Form.Item>
-          <Form.Item name="description" label="项目描述">
+          <Form.Item 
+            name="business_party" 
+            label="业务方"
+            rules={[{ required: true, message: '请输入业务方' }]}
+          >
+            <Input placeholder="输入业务方名称" />
+          </Form.Item>
+          <Form.Item 
+            name="description" 
+            label="项目描述"
+            rules={[{ required: true, message: '请输入项目描述' }]}
+          >
             <TextArea rows={3} placeholder="描述项目目标和范围..." />
           </Form.Item>
           <div style={{ display: 'flex', gap: 16 }}>

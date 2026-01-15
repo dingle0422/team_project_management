@@ -170,6 +170,9 @@ export default function Daily() {
     log => log.work_date === selectedDate.format('YYYY-MM-DD')
   )
 
+  // 过滤掉已取消的任务（用于日报选择）
+  const availableTasks = myTasks.filter(task => task.status !== 'cancelled')
+
   if (loading && logs.length === 0) {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', padding: 100 }}>
@@ -320,7 +323,7 @@ export default function Daily() {
             rules={[{ required: true, message: '请选择任务' }]}
           >
             <Select placeholder="选择任务">
-              {myTasks.map(task => (
+              {availableTasks.map(task => (
                 <Select.Option key={task.id} value={task.id}>
                   [{task.project?.code}] {task.title}
                 </Select.Option>
@@ -391,7 +394,7 @@ export default function Daily() {
             rules={[{ required: true, message: '请选择任务' }]}
           >
             <Select placeholder="选择任务">
-              {myTasks.map(task => (
+              {availableTasks.map(task => (
                 <Select.Option key={task.id} value={task.id}>
                   [{task.project?.code}] {task.title}
                 </Select.Option>

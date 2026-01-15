@@ -55,6 +55,15 @@ def convert_project_to_info(db: Session, project: Project) -> ProjectInfo:
             avatar_url=project.owner.avatar_url,
         )
     
+    # 获取创建者信息
+    creator_brief = None
+    if project.creator:
+        creator_brief = MemberBrief(
+            id=project.creator.id,
+            name=project.creator.name,
+            avatar_url=project.creator.avatar_url,
+        )
+    
     task_stats = get_project_task_stats(db, project.id)
     
     return ProjectInfo(
@@ -63,10 +72,13 @@ def convert_project_to_info(db: Session, project: Project) -> ProjectInfo:
         code=project.code,
         description=project.description,
         priority=project.priority,
+        business_party=project.business_party,
         start_date=project.start_date,
         end_date=project.end_date,
         status=project.status,
         owner=owner_brief,
+        creator=creator_brief,
+        created_by=project.created_by,
         member_count=member_count,
         task_stats=task_stats,
         created_at=project.created_at,
@@ -87,7 +99,7 @@ def list_projects(
     """
     获取项目列表（所有人可查看）
     """
-    query = db.query(Project).options(joinedload(Project.owner))
+    query = db.query(Project).options(joinedload(Project.owner), joinedload(Project.creator))
     
     # 关键字搜索
     if keyword:
@@ -152,7 +164,10 @@ def get_project(
     """
     获取项目详情（所有人可查看）
     """
-    project = db.query(Project).options(joinedload(Project.owner)).filter(
+    project = db.query(Project).options(
+        joinedload(Project.owner), 
+        joinedload(Project.creator)
+    ).filter(
         Project.id == project_id
     ).first()
     
@@ -194,6 +209,15 @@ def get_project(
             avatar_url=project.owner.avatar_url,
         )
     
+    # 获取创建者信息
+    creator_brief = None
+    if project.creator:
+        creator_brief = MemberBrief(
+            id=project.creator.id,
+            name=project.creator.name,
+            avatar_url=project.creator.avatar_url,
+        )
+    
     return Response(
         data=ProjectDetail(
             id=project.id,
@@ -201,10 +225,13 @@ def get_project(
             code=project.code,
             description=project.description,
             priority=project.priority,
+            business_party=project.business_party,
             start_date=project.start_date,
             end_date=project.end_date,
             status=project.status,
             owner=owner_brief,
+            creator=creator_brief,
+            created_by=project.created_by,
             member_count=len(members),
             task_stats=task_stats,
             created_at=project.created_at,
@@ -239,6 +266,7 @@ def create_project(
         code=project_in.code,
         description=project_in.description,
         priority=project_in.priority,
+        business_party=project_in.business_party,
         start_date=project_in.start_date,
         end_date=project_in.end_date,
         owner_id=project_in.owner_id or current_user.id,

@@ -203,6 +203,7 @@ def list_my_tasks(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     status: Optional[str] = Query(None, description="状态筛选"),
+    exclude_cancelled: bool = Query(True, description="是否排除已取消的任务（用于日报选择等场景）"),
 ):
     """
     获取我的任务列表（包括分配给我的任务和我创建的任务）
@@ -217,6 +218,10 @@ def list_my_tasks(
             Task.created_by == current_user.id
         )
     )
+    
+    # 排除已取消的任务（默认排除，用于日报选择等场景）
+    if exclude_cancelled:
+        query = query.filter(Task.status != TASK_STATUS_CANCELLED)
     
     if status:
         query = query.filter(Task.status == status)

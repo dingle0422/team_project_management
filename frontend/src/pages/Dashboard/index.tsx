@@ -82,6 +82,9 @@ export default function Dashboard() {
     }
   }
 
+  // 过滤掉已取消的任务（用于日报选择）
+  const availableTasks = myTasks.filter(task => task.status !== 'cancelled')
+
   // 提交日报
   const handleDailySubmit = async (values: { 
     task_id: number
@@ -373,7 +376,7 @@ export default function Dashboard() {
             rules={[{ required: true, message: '请选择任务' }]}
           >
             <Select placeholder="选择任务">
-              {myTasks.map(task => (
+              {availableTasks.map(task => (
                 <Select.Option key={task.id} value={task.id}>
                   [{task.project?.code}] {task.title}
                 </Select.Option>
