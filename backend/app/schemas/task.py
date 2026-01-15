@@ -71,6 +71,20 @@ class TaskStatusChange(BaseModel):
     review_feedback: Optional[str] = Field(None, description="评审意见")
 
 
+class TaskStatusApprovalInfo(BaseModel):
+    """状态变更审批信息"""
+    id: int
+    stakeholder_id: int
+    stakeholder_name: str
+    stakeholder_avatar: Optional[str] = None
+    approval_status: str  # pending, approved, rejected
+    comment: Optional[str] = None
+    approved_at: Optional[datetime] = None
+    
+    class Config:
+        from_attributes = True
+
+
 class TaskStatusHistoryInfo(BaseModel):
     """状态变更历史"""
     id: int
@@ -82,9 +96,18 @@ class TaskStatusHistoryInfo(BaseModel):
     review_result: Optional[str] = None
     review_feedback: Optional[str] = None
     changed_at: datetime
+    # 审批信息
+    is_pending_approval: bool = False  # 是否等待审批
+    approvals: List["TaskStatusApprovalInfo"] = []
     
     class Config:
         from_attributes = True
+
+
+class TaskApprovalAction(BaseModel):
+    """干系人审批操作"""
+    action: str = Field(..., description="审批操作: approve, reject")
+    comment: Optional[str] = Field(None, description="审批意见")
 
 
 # ==================== 任务基础模型 ====================
@@ -147,11 +170,26 @@ class TaskInfo(TaskBase):
         from_attributes = True
 
 
+class PendingApprovalInfo(BaseModel):
+    """待审批信息"""
+    status_change_id: int
+    from_status: str
+    to_status: str
+    requester: Optional[MemberBrief] = None
+    requested_at: datetime
+    approvals: List[TaskStatusApprovalInfo] = []
+    
+    class Config:
+        from_attributes = True
+
+
 class TaskDetail(TaskInfo):
     """任务详情"""
     stakeholders: List[TaskStakeholderInfo] = []
     status_history: List[TaskStatusHistoryInfo] = []
     sub_tasks: List["TaskInfo"] = []
+    # 待审批信息（如果有）
+    pending_approval: Optional[PendingApprovalInfo] = None
 
 
 class TaskBrief(BaseModel):

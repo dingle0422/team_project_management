@@ -59,9 +59,9 @@ export default function Dashboard() {
       const statsRes = await dailyLogsApi.getStats({ start_date: weekStart, end_date: weekEnd })
       
       setStats({
-        todayTasks: myTasks.filter(t => t.status !== 'completed' && t.status !== 'cancelled').length,
+        todayTasks: myTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
         weekHours: statsRes.data.total_hours || 0,
-        weekCompleted: myTasks.filter(t => t.status === 'completed').length,
+        weekCompleted: myTasks.filter(t => t.status === 'done').length,
         activeProjects: projects.filter(p => p.status === 'active').length,
       })
     } catch (error) {
@@ -143,7 +143,7 @@ export default function Dashboard() {
   }
 
   const pendingTasks = myTasks.filter(t => 
-    t.status === 'todo' || t.status === 'task_review' || t.status === 'in_progress' || t.status === 'outcome_review'
+    t.status === 'todo' || t.status === 'task_review' || t.status === 'in_progress' || t.status === 'result_review'
   ).slice(0, 5)
 
   return (
@@ -211,7 +211,12 @@ export default function Dashboard() {
               </div>
             ) : (
               pendingTasks.map(task => (
-                <div key={task.id} className="task-item">
+                <div 
+                  key={task.id} 
+                  className="task-item clickable"
+                  onClick={() => navigate(`/tasks?task=${task.id}`)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="task-checkbox" />
                   <div className="task-content">
                     <div className="task-title">{task.title}</div>

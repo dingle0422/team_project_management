@@ -151,8 +151,12 @@ export const tasksApi = {
   delete: (id: number): Promise<ApiResponse<null>> =>
     api.delete(`/tasks/${id}`),
   
-  updateStatus: (id: number, data: { status: string; comment?: string }): Promise<ApiResponse<Task>> =>
+  updateStatus: (id: number, data: { new_status: string; comment?: string; review_result?: string; review_feedback?: string }): Promise<ApiResponse<Task>> =>
     api.patch(`/tasks/${id}/status`, data),
+  
+  // 状态变更审批
+  approveStatusChange: (taskId: number, data: { action: 'approve' | 'reject'; comment?: string }): Promise<ApiResponse<Task>> =>
+    api.post(`/tasks/${taskId}/approve`, data),
   
   // 干系人
   addStakeholder: (taskId: number, data: { member_id: number; role: string }): Promise<ApiResponse<null>> =>

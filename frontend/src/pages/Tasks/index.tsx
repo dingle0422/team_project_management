@@ -7,12 +7,14 @@ import {
 import type { MenuProps } from 'antd'
 import { 
   PlusOutlined, MoreOutlined, UserOutlined, 
-  ClockCircleOutlined, CalendarOutlined 
+  ClockCircleOutlined, CalendarOutlined, EditOutlined,
+  CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAppStore } from '@/store/useAppStore'
 import { tasksApi } from '@/services/api'
-import type { Task, TaskStatus, TaskPriority } from '@/types'
+import type { Task, TaskDetail, TaskStatus, TaskPriority } from '@/types'
+import { useAuthStore } from '@/store/useAuthStore'
 import './index.css'
 
 const { TextArea } = Input
@@ -22,8 +24,8 @@ const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: stri
   todo: { label: '待办', color: '#6B7280', bg: '#F3F4F6' },
   task_review: { label: '任务评审', color: '#4F46E5', bg: '#E0E7FF' },
   in_progress: { label: '进行中', color: '#2563EB', bg: '#DBEAFE' },
-  outcome_review: { label: '成果评审', color: '#D97706', bg: '#FEF3C7' },
-  completed: { label: '已完成', color: '#059669', bg: '#D1FAE5' },
+  result_review: { label: '成果评审', color: '#D97706', bg: '#FEF3C7' },
+  done: { label: '已完成', color: '#059669', bg: '#D1FAE5' },
   cancelled: { label: '已取消', color: '#DC2626', bg: '#FEE2E2' },
 }
 
@@ -36,25 +38,61 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
 }
 
 // 看板列配置
-const KANBAN_COLUMNS: TaskStatus[] = ['todo', 'task_review', 'in_progress', 'outcome_review', 'completed']
+const KANBAN_COLUMNS: TaskStatus[] = ['todo', 'task_review', 'in_progress', 'result_review', 'done']
 
 export default function Tasks() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { projects, members, tasks, fetchTasks, tasksLoading } = useAppStore()
+  const { user } = useAuthStore()
   
   // 从 URL 参数初始化项目筛选
   const projectParam = searchParams.get('project')
+  const taskParam = searchParams.get('task')
   const [selectedProject, setSelectedProject] = useState<number | undefined>(
     projectParam ? parseInt(projectParam) : undefined
   )
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [approving, setApproving] = useState(false)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     fetchTasks({ project_id: selectedProject })
   }, [selectedProject, fetchTasks])
+
+  // 处理URL中的task参数，自动打开任务详情
+  useEffect(() => {
+    if (taskParam && tasks.length > 0) {
+      const taskId = parseInt(taskParam)
+      const task = tasks.find(t => t.id === taskId)
+      if (task) {
+        setSelectedTask(task)
+        setDetailModalOpen(true)
+        // 清除URL中的task参数
+        const newParams = new URLSearchParams(searchParams)
+        newParams.delete('task')
+        setSearchParams(newParams, { replace: true })
+      } else {
+        // 如果任务不在当前列表中，尝试从API获取
+        tasksApi.getById(taskId).then(res => {
+          if (res.data) {
+            setSelectedTask(res.data)
+            setDetailModalOpen(true)
+          }
+        }).catch(() => {
+          message.warning('未找到指定任务')
+        }).finally(() => {
+          // 清除URL中的task参数
+          const newParams = new URLSearchParams(searchParams)
+          newParams.delete('task')
+          setSearchParams(newParams, { replace: true })
+        })
+      }
+    }
+  }, [taskParam, tasks, searchParams, setSearchParams])
 
   // 当选择项目改变时更新 URL
   const handleProjectChange = (projectId: number | undefined) => {
@@ -91,7 +129,7 @@ export default function Tasks() {
   // 更新任务状态
   const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
     try {
-      await tasksApi.updateStatus(taskId, { status: newStatus })
+      await tasksApi.updateStatus(taskId, { new_status: newStatus })
       message.success('状态已更新')
       fetchTasks({ project_id: selectedProject })
       if (selectedTask?.id === taskId) {
@@ -103,9 +141,77 @@ export default function Tasks() {
   }
 
   // 打开任务详情
-  const openTaskDetail = (task: Task) => {
-    setSelectedTask(task)
+  const openTaskDetail = async (task: Task) => {
+    setIsEditing(false)
     setDetailModalOpen(true)
+    // 获取完整的任务详情（包括审批信息）
+    try {
+      const res = await tasksApi.getById(task.id)
+      setSelectedTask(res.data as TaskDetail)
+    } catch {
+      setSelectedTask(task as TaskDetail)
+    }
+  }
+
+  // 审批状态变更
+  const handleApproval = async (action: 'approve' | 'reject', comment?: string) => {
+    if (!selectedTask) return
+    setApproving(true)
+    try {
+      const res = await tasksApi.approveStatusChange(selectedTask.id, { action, comment })
+      message.success(res.message || (action === 'approve' ? '审批通过' : '已拒绝'))
+      fetchTasks({ project_id: selectedProject })
+      // 刷新任务详情
+      const detailRes = await tasksApi.getById(selectedTask.id)
+      setSelectedTask(detailRes.data as TaskDetail)
+    } catch {
+      message.error('审批失败')
+    } finally {
+      setApproving(false)
+    }
+  }
+
+  // 开始编辑任务
+  const startEditing = () => {
+    if (selectedTask) {
+      editForm.setFieldsValue({
+        title: selectedTask.title,
+        description: selectedTask.description,
+        assignee_id: selectedTask.assignee?.id,
+        priority: selectedTask.priority,
+        estimated_hours: selectedTask.estimated_hours,
+        due_date: selectedTask.due_date ? dayjs(selectedTask.due_date) : undefined,
+      })
+      setIsEditing(true)
+    }
+  }
+
+  // 取消编辑
+  const cancelEditing = () => {
+    setIsEditing(false)
+    editForm.resetFields()
+  }
+
+  // 更新任务
+  const handleUpdate = async (values: Partial<Task> & { due_date?: dayjs.Dayjs }) => {
+    if (!selectedTask) return
+    try {
+      await tasksApi.update(selectedTask.id, {
+        ...values,
+        due_date: values.due_date?.format('YYYY-MM-DD'),
+      })
+      message.success('任务更新成功')
+      setIsEditing(false)
+      fetchTasks({ project_id: selectedProject })
+      // 更新当前选中的任务
+      setSelectedTask({
+        ...selectedTask,
+        ...values,
+        due_date: values.due_date?.format('YYYY-MM-DD'),
+      })
+    } catch {
+      message.error('更新失败')
+    }
   }
 
   // 渲染任务卡片
@@ -291,6 +397,13 @@ export default function Tasks() {
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
+          <Form.Item name="stakeholder_ids" label="干系人（可多选，创建后会收到通知）">
+            <Select mode="multiple" placeholder="选择干系人" allowClear>
+              {members.map(m => (
+                <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               创建任务
@@ -303,75 +416,183 @@ export default function Tasks() {
       <Modal
         title={null}
         open={detailModalOpen}
-        onCancel={() => setDetailModalOpen(false)}
+        onCancel={() => { setDetailModalOpen(false); setIsEditing(false); editForm.resetFields(); }}
         footer={null}
         width={700}
         className="task-detail-modal"
       >
         {selectedTask && (
           <div className="task-detail">
-            <div className="task-detail-header">
-              <Tag color={PRIORITY_CONFIG[selectedTask.priority].color}>
-                {PRIORITY_CONFIG[selectedTask.priority].label}
-              </Tag>
-              <Select
-                value={selectedTask.status}
-                onChange={(v) => handleStatusChange(selectedTask.id, v)}
-                style={{ width: 120 }}
-              >
-                {KANBAN_COLUMNS.map(s => (
-                  <Select.Option key={s} value={s}>
-                    {STATUS_CONFIG[s].label}
-                  </Select.Option>
-                ))}
-              </Select>
-            </div>
-            <h2 className="task-detail-title">{selectedTask.title}</h2>
-            <p className="task-detail-project">
-              项目: {selectedTask.project?.name} ({selectedTask.project?.code})
-            </p>
-            {selectedTask.description && (
-              <div className="task-detail-desc">
-                <h4>描述</h4>
-                <p>{selectedTask.description}</p>
-              </div>
-            )}
-            <div className="task-detail-info">
-              <div className="info-item">
-                <span className="label">负责人</span>
-                <span className="value">
-                  {selectedTask.assignee ? (
-                    <Avatar size="small" style={{ background: '#F59E0B', marginRight: 8 }}>
-                      {selectedTask.assignee.name?.charAt(0)}
-                    </Avatar>
-                  ) : null}
-                  {selectedTask.assignee?.name || '未分配'}
-                </span>
-              </div>
-              <div className="info-item">
-                <span className="label">预估工时</span>
-                <span className="value">{selectedTask.estimated_hours || '-'}h</span>
-              </div>
-              <div className="info-item">
-                <span className="label">实际工时</span>
-                <span className="value">{selectedTask.actual_hours || '-'}h</span>
-              </div>
-              <div className="info-item">
-                <span className="label">截止日期</span>
-                <span className="value">{selectedTask.due_date || '-'}</span>
-              </div>
-            </div>
-            {selectedTask.stakeholders && selectedTask.stakeholders.length > 0 && (
-              <div className="task-detail-stakeholders">
-                <h4>干系人</h4>
-                <div className="stakeholder-list">
-                  {selectedTask.stakeholders.map(s => (
-                    <Tag key={s.id}>
-                      {s.member.name} ({s.role === 'reviewer' ? '评审人' : s.role === 'collaborator' ? '协作者' : '干系人'})
-                    </Tag>
-                  ))}
+            {!isEditing ? (
+              // 查看模式
+              <>
+                <div className="task-detail-header">
+                  <Tag color={PRIORITY_CONFIG[selectedTask.priority].color}>
+                    {PRIORITY_CONFIG[selectedTask.priority].label}
+                  </Tag>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <Select
+                      value={selectedTask.status}
+                      onChange={(v) => handleStatusChange(selectedTask.id, v)}
+                      style={{ width: 120 }}
+                    >
+                      {KANBAN_COLUMNS.map(s => (
+                        <Select.Option key={s} value={s}>
+                          {STATUS_CONFIG[s].label}
+                        </Select.Option>
+                      ))}
+                      <Select.Option key="cancelled" value="cancelled">
+                        {STATUS_CONFIG.cancelled.label}
+                      </Select.Option>
+                    </Select>
+                    <Button icon={<EditOutlined />} onClick={startEditing}>
+                      编辑
+                    </Button>
+                  </div>
                 </div>
-              </div>
+                <h2 className="task-detail-title">{selectedTask.title}</h2>
+                <p className="task-detail-project">
+                  项目: {selectedTask.project?.name} ({selectedTask.project?.code})
+                </p>
+                {selectedTask.description && (
+                  <div className="task-detail-desc">
+                    <h4>描述</h4>
+                    <p>{selectedTask.description}</p>
+                  </div>
+                )}
+                <div className="task-detail-info">
+                  <div className="info-item">
+                    <span className="label">负责人</span>
+                    <span className="value">
+                      {selectedTask.assignee ? (
+                        <Avatar size="small" style={{ background: '#F59E0B', marginRight: 8 }}>
+                          {selectedTask.assignee.name?.charAt(0)}
+                        </Avatar>
+                      ) : null}
+                      {selectedTask.assignee?.name || '未分配'}
+                    </span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">预估工时</span>
+                    <span className="value">{selectedTask.estimated_hours || '-'}h</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">实际工时</span>
+                    <span className="value">{selectedTask.actual_hours || '-'}h</span>
+                  </div>
+                  <div className="info-item">
+                    <span className="label">截止日期</span>
+                    <span className="value">{selectedTask.due_date || '-'}</span>
+                  </div>
+                </div>
+                {selectedTask.stakeholders && selectedTask.stakeholders.length > 0 && (
+                  <div className="task-detail-stakeholders">
+                    <h4>干系人</h4>
+                    <div className="stakeholder-list">
+                      {selectedTask.stakeholders.map(s => (
+                        <Tag key={s.id}>
+                          {s.member.name} ({s.role === 'reviewer' ? '评审人' : s.role === 'collaborator' ? '协作者' : '干系人'})
+                        </Tag>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* 待审批信息 */}
+                {selectedTask.pending_approval && (
+                  <div className="task-detail-approval" style={{ marginTop: 20, padding: 16, background: '#FEF3C7', borderRadius: 8 }}>
+                    <h4 style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <LoadingOutlined style={{ color: '#D97706' }} />
+                      等待审批
+                    </h4>
+                    <p style={{ margin: '0 0 12px', color: '#92400E' }}>
+                      {selectedTask.pending_approval.requester?.name} 请求将状态从 
+                      「{STATUS_CONFIG[selectedTask.pending_approval.from_status as TaskStatus]?.label || selectedTask.pending_approval.from_status}」
+                      变更为「{STATUS_CONFIG[selectedTask.pending_approval.to_status as TaskStatus]?.label || selectedTask.pending_approval.to_status}」
+                    </p>
+                    <div style={{ marginBottom: 12 }}>
+                      <strong>审批进度：</strong>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+                        {selectedTask.pending_approval.approvals.map(a => (
+                          <Tag 
+                            key={a.id}
+                            color={a.approval_status === 'approved' ? 'success' : a.approval_status === 'rejected' ? 'error' : 'warning'}
+                            icon={a.approval_status === 'approved' ? <CheckCircleOutlined /> : a.approval_status === 'rejected' ? <CloseCircleOutlined /> : <LoadingOutlined />}
+                          >
+                            {a.stakeholder_name}: {a.approval_status === 'approved' ? '已通过' : a.approval_status === 'rejected' ? '已拒绝' : '待审批'}
+                          </Tag>
+                        ))}
+                      </div>
+                    </div>
+                    
+                    {/* 如果当前用户有待审批项，显示审批按钮 */}
+                    {selectedTask.pending_approval.approvals.some(
+                      a => a.stakeholder_id === user?.id && a.approval_status === 'pending'
+                    ) && (
+                      <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+                        <Button 
+                          type="primary" 
+                          icon={<CheckCircleOutlined />}
+                          onClick={() => handleApproval('approve')}
+                          loading={approving}
+                        >
+                          通过
+                        </Button>
+                        <Button 
+                          danger 
+                          icon={<CloseCircleOutlined />}
+                          onClick={() => handleApproval('reject')}
+                          loading={approving}
+                        >
+                          拒绝
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            ) : (
+              // 编辑模式
+              <Form form={editForm} layout="vertical" onFinish={handleUpdate}>
+                <Form.Item
+                  name="title"
+                  label="任务标题"
+                  rules={[{ required: true, message: '请输入任务标题' }]}
+                >
+                  <Input placeholder="输入任务标题" />
+                </Form.Item>
+                <Form.Item name="description" label="任务描述">
+                  <TextArea rows={3} placeholder="描述任务详情..." />
+                </Form.Item>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <Form.Item name="assignee_id" label="负责人" style={{ flex: 1 }}>
+                    <Select placeholder="选择负责人" allowClear>
+                      {members.map(m => (
+                        <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                  <Form.Item name="priority" label="优先级" style={{ flex: 1 }}>
+                    <Select>
+                      {Object.entries(PRIORITY_CONFIG).map(([key, config]) => (
+                        <Select.Option key={key} value={key}>{config.label}</Select.Option>
+                      ))}
+                    </Select>
+                  </Form.Item>
+                </div>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <Form.Item name="estimated_hours" label="预估工时" style={{ flex: 1 }}>
+                    <InputNumber min={0.5} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
+                  </Form.Item>
+                  <Form.Item name="due_date" label="截止日期" style={{ flex: 1 }}>
+                    <DatePicker style={{ width: '100%' }} />
+                  </Form.Item>
+                </div>
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <Button onClick={cancelEditing}>取消</Button>
+                  <Button type="primary" htmlType="submit">保存</Button>
+                </div>
+              </Form>
             )}
           </div>
         )}

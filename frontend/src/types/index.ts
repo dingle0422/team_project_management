@@ -66,7 +66,7 @@ export interface Meeting {
 }
 
 // 任务状态
-export type TaskStatus = 'todo' | 'task_review' | 'in_progress' | 'outcome_review' | 'completed' | 'cancelled'
+export type TaskStatus = 'todo' | 'task_review' | 'in_progress' | 'result_review' | 'done' | 'cancelled'
 
 // 任务优先级
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent'
@@ -99,6 +99,33 @@ export interface TaskStakeholder {
   id: number
   member: MemberBrief
   role: 'reviewer' | 'collaborator' | 'stakeholder'
+}
+
+// 状态变更审批
+export interface TaskStatusApproval {
+  id: number
+  stakeholder_id: number
+  stakeholder_name: string
+  stakeholder_avatar?: string
+  approval_status: 'pending' | 'approved' | 'rejected'
+  comment?: string
+  approved_at?: string
+}
+
+// 待审批信息
+export interface PendingApproval {
+  status_change_id: number
+  from_status: string
+  to_status: string
+  requester?: MemberBrief
+  requested_at: string
+  approvals: TaskStatusApproval[]
+}
+
+// 任务详情（包含审批信息）
+export interface TaskDetail extends Task {
+  stakeholders?: TaskStakeholder[]
+  pending_approval?: PendingApproval
 }
 
 // 每日工作日志

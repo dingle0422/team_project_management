@@ -256,6 +256,79 @@ class NotificationService:
                 return context
         
         return text[:100] if len(text) > 100 else text
+    
+    def create_stakeholder_notification(
+        self,
+        db: Session,
+        stakeholder_ids: List[int],
+        sender_id: int,
+        task_id: int,
+        task_title: str,
+    ) -> List[Notification]:
+        """
+        创建干系人通知（任务创建时通知干系人）
+        """
+        notifications = []
+        for stakeholder_id in stakeholder_ids:
+            if stakeholder_id == sender_id:
+                continue
+            
+            notification = self.create_notification(
+                db=db,
+                recipient_id=stakeholder_id,
+                sender_id=sender_id,
+                notification_type="stakeholder",
+                content_type="task",
+                content_id=task_id,
+                title="您被添加为任务干系人",
+                message=f"任务「{task_title}」需要您关注",
+                link=f"/tasks/{task_id}",
+            )
+            notifications.append(notification)
+        
+        return notifications
+    
+    def create_approval_request_notification(
+        self,
+        db: Session,
+        stakeholder_ids: List[int],
+        sender_id: int,
+        task_id: int,
+        task_title: str,
+        from_status: str,
+        to_status: str,
+    ) -> List[Notification]:
+        """
+        创建状态变更审批请求通知
+        """
+        status_names = {
+            "todo": "待办",
+            "task_review": "任务评审",
+            "in_progress": "进行中",
+            "result_review": "成果评审",
+            "done": "已完成",
+            "cancelled": "已取消",
+        }
+        
+        notifications = []
+        for stakeholder_id in stakeholder_ids:
+            if stakeholder_id == sender_id:
+                continue
+            
+            notification = self.create_notification(
+                db=db,
+                recipient_id=stakeholder_id,
+                sender_id=sender_id,
+                notification_type="approval_request",
+                content_type="task",
+                content_id=task_id,
+                title="需要您审批状态变更",
+                message=f"任务「{task_title}」状态将从{status_names.get(from_status, from_status)}变更为{status_names.get(to_status, to_status)}，请审批",
+                link=f"/tasks?task={task_id}",
+            )
+            notifications.append(notification)
+        
+        return notifications
 
 
 # 全局通知服务实例

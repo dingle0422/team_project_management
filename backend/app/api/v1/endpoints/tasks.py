@@ -10,7 +10,7 @@ from sqlalchemy import func, or_
 from app.api.deps import get_db, get_current_user, check_owner_or_admin
 from app.models.member import Member
 from app.models.project import Project
-from app.models.task import Task, TaskStakeholder, TaskStatusHistory
+from app.models.task import Task, TaskStakeholder, TaskStatusHistory, TaskStatusApproval
 from app.schemas.task import (
     TaskCreate,
     TaskUpdate,
@@ -21,6 +21,9 @@ from app.schemas.task import (
     TaskStatusHistoryInfo,
     TaskStakeholderAdd,
     TaskStakeholderInfo,
+    TaskApprovalAction,
+    TaskStatusApprovalInfo,
+    PendingApprovalInfo,
     STATUS_TRANSITIONS,
     TASK_STATUS_DONE,
     TASK_STATUS_CANCELLED,
@@ -316,6 +319,51 @@ def get_task(
     # 获取子任务
     sub_tasks = db.query(Task).filter(Task.parent_task_id == task_id).order_by(Task.sort_order).all()
     
+    # 获取待审批信息
+    pending_approval_info = None
+    pending_change = db.query(TaskStatusHistory).filter(
+        TaskStatusHistory.task_id == task_id,
+        TaskStatusHistory.review_result == "pending"
+    ).first()
+    
+    if pending_change:
+        # 获取审批列表
+        approvals_data = db.query(TaskStatusApproval, Member).join(
+            Member, TaskStatusApproval.stakeholder_id == Member.id
+        ).filter(
+            TaskStatusApproval.status_change_id == pending_change.id
+        ).all()
+        
+        approvals = [
+            TaskStatusApprovalInfo(
+                id=approval.id,
+                stakeholder_id=member.id,
+                stakeholder_name=member.name,
+                stakeholder_avatar=member.avatar_url,
+                approval_status=approval.approval_status,
+                comment=approval.comment,
+                approved_at=approval.approved_at,
+            )
+            for approval, member in approvals_data
+        ]
+        
+        requester_brief = None
+        if pending_change.changer:
+            requester_brief = MemberBrief(
+                id=pending_change.changer.id,
+                name=pending_change.changer.name,
+                avatar_url=pending_change.changer.avatar_url,
+            )
+        
+        pending_approval_info = PendingApprovalInfo(
+            status_change_id=pending_change.id,
+            from_status=pending_change.from_status or "",
+            to_status=pending_change.to_status,
+            requester=requester_brief,
+            requested_at=pending_change.changed_at,
+            approvals=approvals,
+        )
+    
     # 基础信息
     info = convert_task_to_info(db, task)
     
@@ -325,6 +373,7 @@ def get_task(
             stakeholders=stakeholders,
             status_history=status_history,
             sub_tasks=[convert_task_to_info(db, st) for st in sub_tasks],
+            pending_approval=pending_approval_info,
         )
     )
 
@@ -385,7 +434,7 @@ def create_task(
     db.add(task)
     db.flush()
     
-    # 添加干系人
+    # 添加干系人并通知
     if task_in.stakeholder_ids:
         for member_id in task_in.stakeholder_ids:
             ts = TaskStakeholder(
@@ -394,6 +443,15 @@ def create_task(
                 role="stakeholder",
             )
             db.add(ts)
+        
+        # 通知干系人
+        notification_service.create_stakeholder_notification(
+            db=db,
+            stakeholder_ids=task_in.stakeholder_ids,
+            sender_id=current_user.id,
+            task_id=task.id,
+            task_title=task.title,
+        )
     
     # 记录状态历史
     history = TaskStatusHistory(
@@ -537,6 +595,8 @@ def change_task_status(
     - result_review → done（评审通过，完成）
     - 任何状态 → cancelled（取消）
     - cancelled → todo（重新激活）
+    
+    当创建者/负责人变更状态时，如果有干系人，需要干系人全票通过才能变更
     """
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
@@ -570,6 +630,26 @@ def change_task_status(
             detail=f"无法从 '{current_status}' 转换到 '{new_status}'。允许的状态: {allowed_transitions}"
         )
     
+    # 获取干系人列表（排除当前用户）
+    stakeholders = db.query(TaskStakeholder).filter(
+        TaskStakeholder.task_id == task_id,
+        TaskStakeholder.member_id != current_user.id
+    ).all()
+    
+    # 检查是否有待审批的状态变更
+    pending_change = db.query(TaskStatusHistory).join(
+        TaskStatusApproval, TaskStatusHistory.id == TaskStatusApproval.status_change_id
+    ).filter(
+        TaskStatusHistory.task_id == task_id,
+        TaskStatusApproval.approval_status == "pending"
+    ).first()
+    
+    if pending_change:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="当前有待审批的状态变更，请等待干系人审批完成"
+        )
+    
     # 确定评审类型
     review_type = None
     if current_status == "task_review":
@@ -577,7 +657,62 @@ def change_task_status(
     elif current_status == "result_review":
         review_type = "result_review"
     
-    # 更新状态
+    # 如果是创建者/负责人变更状态，且有干系人，需要创建待审批流程
+    is_creator_or_assignee = (task.created_by == current_user.id) or (task.assignee_id == current_user.id)
+    needs_approval = is_creator_or_assignee and len(stakeholders) > 0 and new_status != TASK_STATUS_CANCELLED
+    
+    if needs_approval:
+        # 创建待审批的状态变更记录（不实际变更状态）
+        history = TaskStatusHistory(
+            task_id=task.id,
+            from_status=current_status,
+            to_status=new_status,
+            changed_by=current_user.id,
+            comment=status_change.comment,
+            review_type=review_type,
+            review_result="pending",  # 标记为待审批
+            review_feedback=status_change.review_feedback,
+        )
+        db.add(history)
+        db.flush()  # 获取history.id
+        
+        # 为每个干系人创建审批记录
+        for stakeholder in stakeholders:
+            approval = TaskStatusApproval(
+                status_change_id=history.id,
+                stakeholder_id=stakeholder.member_id,
+                approval_status="pending",
+            )
+            db.add(approval)
+        
+        # 通知干系人进行审批
+        stakeholder_ids = [s.member_id for s in stakeholders]
+        notification_service.create_approval_request_notification(
+            db=db,
+            stakeholder_ids=stakeholder_ids,
+            sender_id=current_user.id,
+            task_id=task.id,
+            task_title=task.title,
+            from_status=current_status,
+            to_status=new_status,
+        )
+        
+        db.commit()
+        
+        # 重新加载关联数据
+        task = db.query(Task).options(
+            joinedload(Task.project),
+            joinedload(Task.meeting),
+            joinedload(Task.assignee),
+            joinedload(Task.creator)
+        ).filter(Task.id == task.id).first()
+        
+        return Response(
+            data=convert_task_to_info(db, task),
+            message="状态变更请求已提交，等待干系人审批"
+        )
+    
+    # 无需审批，直接变更状态
     task.status = new_status
     
     # 如果完成，记录完成时间
@@ -605,10 +740,10 @@ def change_task_status(
         notify_member_ids.append(task.assignee_id)
     if task.created_by:
         notify_member_ids.append(task.created_by)
-    stakeholder_ids = [s.member_id for s in db.query(TaskStakeholder).filter(
+    all_stakeholder_ids = [s.member_id for s in db.query(TaskStakeholder).filter(
         TaskStakeholder.task_id == task_id
     ).all()]
-    notify_member_ids.extend(stakeholder_ids)
+    notify_member_ids.extend(all_stakeholder_ids)
     notify_member_ids = list(set(notify_member_ids))
     
     # 提交评审时通知干系人评审
@@ -657,6 +792,156 @@ def change_task_status(
     ).filter(Task.id == task.id).first()
     
     return Response(data=convert_task_to_info(db, task))
+
+
+@router.post("/{task_id}/approve", response_model=Response[TaskInfo])
+def approve_status_change(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Member = Depends(get_current_user),
+    task_id: int,
+    approval_action: TaskApprovalAction,
+):
+    """
+    干系人审批状态变更
+    
+    - action: approve（通过）或 reject（拒绝）
+    - 所有干系人通过后，状态才会变更
+    - 任一干系人拒绝，状态变更取消
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # 查找当前用户待审批的记录
+    pending_approval = db.query(TaskStatusApproval).join(
+        TaskStatusHistory, TaskStatusApproval.status_change_id == TaskStatusHistory.id
+    ).filter(
+        TaskStatusHistory.task_id == task_id,
+        TaskStatusApproval.stakeholder_id == current_user.id,
+        TaskStatusApproval.approval_status == "pending"
+    ).first()
+    
+    if not pending_approval:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="没有找到待审批的状态变更请求"
+        )
+    
+    # 获取状态变更记录
+    status_change_record = db.query(TaskStatusHistory).filter(
+        TaskStatusHistory.id == pending_approval.status_change_id
+    ).first()
+    
+    # 更新审批状态
+    pending_approval.approval_status = "approved" if approval_action.action == "approve" else "rejected"
+    pending_approval.comment = approval_action.comment
+    pending_approval.approved_at = datetime.utcnow()
+    
+    if approval_action.action == "reject":
+        # 如果拒绝，标记整个状态变更为失败
+        status_change_record.review_result = "rejected"
+        
+        # 通知创建者状态变更被拒绝
+        notification_service.create_notification(
+            db=db,
+            recipient_id=status_change_record.changed_by,
+            sender_id=current_user.id,
+            notification_type="approval_rejected",
+            content_type="task",
+            content_id=task_id,
+            title="状态变更被拒绝",
+            message=f"任务「{task.title}」的状态变更被 {current_user.name} 拒绝",
+            link=f"/tasks/{task_id}",
+        )
+        
+        db.commit()
+        
+        task = db.query(Task).options(
+            joinedload(Task.project),
+            joinedload(Task.meeting),
+            joinedload(Task.assignee),
+            joinedload(Task.creator)
+        ).filter(Task.id == task_id).first()
+        
+        return Response(
+            data=convert_task_to_info(db, task),
+            message="您已拒绝此状态变更"
+        )
+    
+    # 检查是否所有人都已通过
+    all_approvals = db.query(TaskStatusApproval).filter(
+        TaskStatusApproval.status_change_id == status_change_record.id
+    ).all()
+    
+    all_approved = all(a.approval_status == "approved" for a in all_approvals)
+    
+    if all_approved:
+        # 全票通过，执行状态变更
+        new_status = status_change_record.to_status
+        old_status = task.status
+        
+        task.status = new_status
+        status_change_record.review_result = "passed"
+        
+        # 如果完成，记录完成时间
+        if new_status == TASK_STATUS_DONE:
+            task.completed_at = datetime.utcnow()
+        elif new_status != TASK_STATUS_DONE and task.completed_at:
+            task.completed_at = None
+        
+        # 通知所有相关人员状态变更成功
+        notify_member_ids = []
+        if task.assignee_id:
+            notify_member_ids.append(task.assignee_id)
+        if task.created_by:
+            notify_member_ids.append(task.created_by)
+        stakeholder_ids = [s.member_id for s in db.query(TaskStakeholder).filter(
+            TaskStakeholder.task_id == task_id
+        ).all()]
+        notify_member_ids.extend(stakeholder_ids)
+        notify_member_ids = list(set(notify_member_ids))
+        
+        notification_service.create_status_change_notification(
+            db=db,
+            recipient_ids=notify_member_ids,
+            sender_id=status_change_record.changed_by,
+            task_id=task.id,
+            task_title=task.title,
+            old_status=old_status,
+            new_status=new_status,
+        )
+        
+        db.commit()
+        
+        task = db.query(Task).options(
+            joinedload(Task.project),
+            joinedload(Task.meeting),
+            joinedload(Task.assignee),
+            joinedload(Task.creator)
+        ).filter(Task.id == task_id).first()
+        
+        return Response(
+            data=convert_task_to_info(db, task),
+            message="所有干系人已通过，状态变更成功"
+        )
+    
+    db.commit()
+    
+    task = db.query(Task).options(
+        joinedload(Task.project),
+        joinedload(Task.meeting),
+        joinedload(Task.assignee),
+        joinedload(Task.creator)
+    ).filter(Task.id == task_id).first()
+    
+    return Response(
+        data=convert_task_to_info(db, task),
+        message="审批成功，等待其他干系人审批"
+    )
 
 
 # ==================== 干系人管理 ====================

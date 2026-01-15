@@ -107,6 +107,31 @@ class TaskStatusHistory(Base):
     # 关系
     task = relationship("Task", back_populates="status_history")
     changer = relationship("Member", foreign_keys=[changed_by])
+    approvals = relationship("TaskStatusApproval", back_populates="status_change", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<TaskStatusHistory(task_id={self.task_id}, {self.from_status} -> {self.to_status})>"
+
+
+class TaskStatusApproval(Base):
+    """任务状态变更审批表 - 干系人投票"""
+    
+    __tablename__ = "task_status_approvals"
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    status_change_id: Mapped[int] = mapped_column(Integer, ForeignKey("task_status_history.id", ondelete="CASCADE"), nullable=False, comment="状态变更ID")
+    stakeholder_id: Mapped[int] = mapped_column(Integer, ForeignKey("members.id", ondelete="CASCADE"), nullable=False, comment="干系人ID")
+    
+    # 审批结果: pending（待审批）, approved（通过）, rejected（拒绝）
+    approval_status: Mapped[str] = mapped_column(String(20), default="pending", comment="审批状态")
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True, comment="审批意见")
+    
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, comment="创建时间")
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, comment="审批时间")
+    
+    # 关系
+    status_change = relationship("TaskStatusHistory", back_populates="approvals")
+    stakeholder = relationship("Member", foreign_keys=[stakeholder_id])
+    
+    def __repr__(self):
+        return f"<TaskStatusApproval(status_change_id={self.status_change_id}, stakeholder_id={self.stakeholder_id}, status={self.approval_status})>"
