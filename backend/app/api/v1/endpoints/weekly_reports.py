@@ -247,7 +247,7 @@ def generate_personal_weekly_report(
         achievements=ai_result["achievements"],
         issues=ai_result["issues"],
         next_week_plan=ai_result["next_week_plan"],
-        raw_data=data.model_dump(),
+        raw_data=data.model_dump(mode="json"),
         ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
     )
     db.add(report)
@@ -312,7 +312,7 @@ def generate_project_weekly_report(
         achievements=ai_result["achievements"],
         issues=ai_result["issues"],
         next_week_plan=ai_result["next_week_plan"],
-        raw_data=data.model_dump(),
+        raw_data=data.model_dump(mode="json"),
         ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
     )
     db.add(report)
