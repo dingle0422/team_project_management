@@ -177,6 +177,11 @@ export interface WeeklyReport {
   achievements: string
   issues?: string
   next_week_plan?: string
+  // 编辑后的内容
+  edited_summary?: string
+  edited_achievements?: string
+  edited_issues?: string
+  edited_next_week_plan?: string
   ai_model?: string
   generated_at: string
   is_reviewed: boolean

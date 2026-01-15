@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
-  Button, Modal, Form, Input, Select, DatePicker, 
+  Button, Modal, Form, Input, Select, DatePicker, Popconfirm,
   message, Spin, Tag, Progress, Card, Row, Col, List, Empty
 } from 'antd'
 import { 
   PlusOutlined, TeamOutlined, CalendarOutlined, FolderOutlined,
-  EditOutlined, UnorderedListOutlined, FileTextOutlined, EyeOutlined
+  EditOutlined, UnorderedListOutlined, FileTextOutlined, EyeOutlined, DeleteOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAppStore } from '@/store/useAppStore'
+import { useAuthStore } from '@/store/useAuthStore'
 import { projectsApi, meetingsApi } from '@/services/api'
 import type { Project, Meeting } from '@/types'
 import './index.css'
@@ -28,6 +29,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 export default function Projects() {
   const navigate = useNavigate()
   const { projects, fetchProjects, projectsLoading, members } = useAppStore()
+  const { user } = useAuthStore()
   
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
@@ -109,6 +111,28 @@ export default function Projects() {
     } catch {
       message.error('更新失败')
     }
+  }
+
+  // 删除项目
+  const handleDelete = async () => {
+    if (!selectedProject) return
+    try {
+      await projectsApi.delete(selectedProject.id)
+      message.success('项目已删除')
+      setDetailModalOpen(false)
+      setSelectedProject(null)
+      fetchProjects()
+    } catch {
+      message.error('删除失败')
+    }
+  }
+
+  // 判断是否可以删除（创建者或管理员）
+  const canDelete = () => {
+    if (!selectedProject || !user) return false
+    if (user.role === 'admin') return true
+    // 检查 owner_id 是否是当前用户（假设 owner 是创建者）
+    return selectedProject.owner_id === user.id || (selectedProject as any).created_by === user.id
   }
 
   // 跳转到任务页面
@@ -354,6 +378,23 @@ export default function Projects() {
               >
                 会议纪要
               </Button>
+              {canDelete() && (
+                <Popconfirm
+                  title="确认删除"
+                  description="确定要删除这个项目吗？此操作不可撤销，项目下的所有任务也将被删除。"
+                  onConfirm={handleDelete}
+                  okText="确认"
+                  cancelText="取消"
+                >
+                  <Button 
+                    danger 
+                    icon={<DeleteOutlined />} 
+                    block
+                  >
+                    删除项目
+                  </Button>
+                </Popconfirm>
+              )}
             </div>
           </div>
         )}

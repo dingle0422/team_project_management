@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { 
-  Button, Modal, Form, Select, DatePicker, 
+  Button, Modal, Form, Select, DatePicker, Input, Popconfirm,
   message, Spin, Card, List, Avatar, Tag, Empty 
 } from 'antd'
-import { PlusOutlined, RobotOutlined, FileTextOutlined } from '@ant-design/icons'
+import { PlusOutlined, RobotOutlined, FileTextOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
@@ -11,17 +11,22 @@ import { weeklyReportsApi } from '@/services/api'
 import type { WeeklyReport } from '@/types'
 import './index.css'
 
+const { TextArea } = Input
+
 export default function Weekly() {
   const { user } = useAuthStore()
   const { projects } = useAppStore()
   
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [reports, setReports] = useState<WeeklyReport[]>([])
   const [selectedReport, setSelectedReport] = useState<WeeklyReport | null>(null)
   const [generateModalOpen, setGenerateModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     loadData()
@@ -76,9 +81,77 @@ export default function Weekly() {
   }
 
   // 查看详情
-  const openDetail = (report: WeeklyReport) => {
-    setSelectedReport(report)
+  const openDetail = async (report: WeeklyReport) => {
+    setIsEditing(false)
+    setSelectedReport(report)  // 先显示基本信息
     setDetailModalOpen(true)
+    setDetailLoading(true)
+    try {
+      const res = await weeklyReportsApi.getById(report.id)
+      setSelectedReport(res.data)
+    } catch (err) {
+      console.error('Failed to load report detail:', err)
+      // 保持使用基本信息
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
+  // 编辑周报
+  const startEditing = () => {
+    if (selectedReport) {
+      editForm.setFieldsValue({
+        edited_summary: selectedReport.edited_summary || selectedReport.summary,
+        edited_achievements: selectedReport.edited_achievements || selectedReport.achievements,
+        edited_issues: selectedReport.edited_issues || selectedReport.issues,
+        edited_next_week_plan: selectedReport.edited_next_week_plan || selectedReport.next_week_plan,
+      })
+      setIsEditing(true)
+    }
+  }
+
+  // 保存编辑
+  const handleSaveEdit = async (values: {
+    edited_summary?: string
+    edited_achievements?: string
+    edited_issues?: string
+    edited_next_week_plan?: string
+  }) => {
+    if (!selectedReport) return
+    try {
+      const res = await weeklyReportsApi.update(selectedReport.id, values)
+      message.success('周报已更新')
+      setSelectedReport(res.data)
+      setIsEditing(false)
+      loadData()
+    } catch (err) {
+      message.error('更新失败')
+    }
+  }
+
+  // 删除周报
+  const handleDelete = async () => {
+    if (!selectedReport) return
+    try {
+      await weeklyReportsApi.delete(selectedReport.id)
+      message.success('周报已删除')
+      setDetailModalOpen(false)
+      setSelectedReport(null)
+      loadData()
+    } catch (err) {
+      message.error('删除失败')
+    }
+  }
+
+  // 判断是否可以编辑/删除（个人周报本人可编辑，项目周报项目创建者可编辑）
+  const canEditOrDelete = () => {
+    if (!selectedReport || !user) return false
+    if (user.role === 'admin') return true
+    if (selectedReport.report_type === 'personal') {
+      return selectedReport.member_id === user.id
+    }
+    // 项目周报暂时允许所有人编辑
+    return true
   }
 
   if (loading && reports.length === 0) {
@@ -238,56 +311,133 @@ export default function Weekly() {
       <Modal
         title={null}
         open={detailModalOpen}
-        onCancel={() => setDetailModalOpen(false)}
+        onCancel={() => { setDetailModalOpen(false); setIsEditing(false); editForm.resetFields(); }}
         footer={null}
         width={700}
       >
-        {selectedReport && (
+        {detailLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
+            <Spin size="large" />
+          </div>
+        ) : selectedReport && (
           <div className="report-detail">
-            <div className="report-detail-header">
-              <Tag color={selectedReport.report_type === 'personal' ? 'blue' : 'green'}>
-                {selectedReport.report_type === 'personal' ? '个人周报' : '项目周报'}
-              </Tag>
-              <span>{selectedReport.week_start} ~ {selectedReport.week_end}</span>
-            </div>
-            
-            <h2>
-              {selectedReport.report_type === 'personal' 
-                ? `${selectedReport.member?.name} 的周报`
-                : `${selectedReport.project?.name} 周报`
-              }
-            </h2>
+            {!isEditing ? (
+              // 查看模式
+              <>
+                <div className="report-detail-header">
+                  <div>
+                    <Tag color={selectedReport.report_type === 'personal' ? 'blue' : 'green'}>
+                      {selectedReport.report_type === 'personal' ? '个人周报' : '项目周报'}
+                    </Tag>
+                    <span style={{ marginLeft: 8 }}>{selectedReport.week_start} ~ {selectedReport.week_end}</span>
+                  </div>
+                  {canEditOrDelete() && (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <Button icon={<EditOutlined />} onClick={startEditing}>编辑</Button>
+                      <Popconfirm
+                        title="确认删除"
+                        description="确定要删除这份周报吗？此操作不可撤销。"
+                        onConfirm={handleDelete}
+                        okText="确认"
+                        cancelText="取消"
+                      >
+                        <Button danger icon={<DeleteOutlined />}>删除</Button>
+                      </Popconfirm>
+                    </div>
+                  )}
+                </div>
+                
+                <h2>
+                  {selectedReport.report_type === 'personal' 
+                    ? `${selectedReport.member?.name} 的周报`
+                    : `${selectedReport.project?.name} 周报`
+                  }
+                </h2>
 
-            <div className="report-section">
-              <h4>📝 本周总结</h4>
-              <p>{selectedReport.summary}</p>
-            </div>
+                <div className="report-section">
+                  <h4>📝 本周总结</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_summary || selectedReport.summary || '暂无内容'}</p>
+                </div>
 
-            <div className="report-section">
-              <h4>✅ 主要成果</h4>
-              <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.achievements}</p>
-            </div>
+                <div className="report-section">
+                  <h4>✅ 主要成果</h4>
+                  <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_achievements || selectedReport.achievements || '暂无内容'}</p>
+                </div>
 
-            {selectedReport.issues && (
-              <div className="report-section">
-                <h4>⚠️ 问题与挑战</h4>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.issues}</p>
-              </div>
+                {(selectedReport.edited_issues || selectedReport.issues) && (
+                  <div className="report-section">
+                    <h4>⚠️ 问题与挑战</h4>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_issues || selectedReport.issues}</p>
+                  </div>
+                )}
+
+                {(selectedReport.edited_next_week_plan || selectedReport.next_week_plan) && (
+                  <div className="report-section">
+                    <h4>📅 下周计划</h4>
+                    <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.edited_next_week_plan || selectedReport.next_week_plan}</p>
+                  </div>
+                )}
+
+                <div className="report-meta">
+                  <span>生成时间: {dayjs(selectedReport.generated_at).format('YYYY-MM-DD HH:mm')}</span>
+                  {selectedReport.ai_model && (
+                    <Tag icon={<RobotOutlined />} color="purple">{selectedReport.ai_model}</Tag>
+                  )}
+                </div>
+              </>
+            ) : (
+              // 编辑模式
+              <Form form={editForm} layout="vertical" onFinish={handleSaveEdit}>
+                <div className="report-detail-header">
+                  <div>
+                    <Tag color={selectedReport.report_type === 'personal' ? 'blue' : 'green'}>
+                      {selectedReport.report_type === 'personal' ? '个人周报' : '项目周报'}
+                    </Tag>
+                    <span style={{ marginLeft: 8 }}>{selectedReport.week_start} ~ {selectedReport.week_end}</span>
+                  </div>
+                </div>
+                
+                <h2 style={{ marginBottom: 16 }}>
+                  编辑: {selectedReport.report_type === 'personal' 
+                    ? `${selectedReport.member?.name} 的周报`
+                    : `${selectedReport.project?.name} 周报`
+                  }
+                </h2>
+
+                <Form.Item
+                  name="edited_summary"
+                  label="本周总结"
+                >
+                  <TextArea rows={3} placeholder="本周总结..." />
+                </Form.Item>
+
+                <Form.Item
+                  name="edited_achievements"
+                  label="主要成果"
+                >
+                  <TextArea rows={4} placeholder="主要成果..." />
+                </Form.Item>
+
+                <Form.Item
+                  name="edited_issues"
+                  label="问题与挑战"
+                >
+                  <TextArea rows={3} placeholder="问题与挑战..." />
+                </Form.Item>
+
+                <Form.Item
+                  name="edited_next_week_plan"
+                  label="下周计划"
+                >
+                  <TextArea rows={3} placeholder="下周计划..." />
+                </Form.Item>
+
+                <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+                  <Button onClick={() => { setIsEditing(false); editForm.resetFields(); }}>取消</Button>
+                  <Button type="primary" htmlType="submit">保存</Button>
+                </div>
+              </Form>
             )}
-
-            {selectedReport.next_week_plan && (
-              <div className="report-section">
-                <h4>📅 下周计划</h4>
-                <p style={{ whiteSpace: 'pre-wrap' }}>{selectedReport.next_week_plan}</p>
-              </div>
-            )}
-
-            <div className="report-meta">
-              <span>生成时间: {dayjs(selectedReport.generated_at).format('YYYY-MM-DD HH:mm')}</span>
-              {selectedReport.ai_model && (
-                <Tag icon={<RobotOutlined />} color="purple">{selectedReport.ai_model}</Tag>
-              )}
-            </div>
           </div>
         )}
       </Modal>

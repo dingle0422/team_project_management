@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { 
-  Button, Modal, Form, Input, Select, InputNumber, DatePicker, 
+  Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm,
   message, Spin, Calendar, Badge, List, Avatar, Tag 
 } from 'antd'
 import type { BadgeProps } from 'antd'
-import { PlusOutlined, CalendarOutlined } from '@ant-design/icons'
+import { PlusOutlined, CalendarOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
@@ -33,7 +33,10 @@ export default function Daily() {
   const [logs, setLogs] = useState<DailyWorkLog[]>([])
   const [summaries, setSummaries] = useState<DailySummary[]>([])
   const [modalOpen, setModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [editingLog, setEditingLog] = useState<DailyWorkLog | null>(null)
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
 
   useEffect(() => {
     loadData()
@@ -98,6 +101,49 @@ export default function Daily() {
       loadData()
     } catch {
       message.error('提交失败')
+    }
+  }
+
+  // 编辑日志
+  const handleEditLog = (log: DailyWorkLog) => {
+    setEditingLog(log)
+    editForm.setFieldsValue({
+      task_id: log.task_id,
+      hours: log.hours,
+      description: log.description,
+      work_type: log.work_type,
+    })
+    setEditModalOpen(true)
+  }
+
+  // 保存编辑
+  const handleSaveEdit = async (values: {
+    task_id: number
+    hours: number
+    description: string
+    work_type: string
+  }) => {
+    if (!editingLog) return
+    try {
+      await dailyLogsApi.updateLog(editingLog.id, values)
+      message.success('日志已更新')
+      setEditModalOpen(false)
+      setEditingLog(null)
+      editForm.resetFields()
+      loadData()
+    } catch {
+      message.error('更新失败')
+    }
+  }
+
+  // 删除日志
+  const handleDeleteLog = async (logId: number) => {
+    try {
+      await dailyLogsApi.deleteLog(logId)
+      message.success('日志已删除')
+      loadData()
+    } catch {
+      message.error('删除失败')
     }
   }
 
@@ -195,7 +241,26 @@ export default function Daily() {
               itemLayout="horizontal"
               dataSource={selectedDateLogs}
               renderItem={(log) => (
-                <List.Item>
+                <List.Item
+                  actions={[
+                    <Button 
+                      key="edit" 
+                      type="text" 
+                      icon={<EditOutlined />}
+                      onClick={() => handleEditLog(log)}
+                    />,
+                    <Popconfirm
+                      key="delete"
+                      title="确认删除"
+                      description="确定要删除这条工时记录吗？"
+                      onConfirm={() => handleDeleteLog(log.id)}
+                      okText="确认"
+                      cancelText="取消"
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  ]}
+                >
                   <List.Item.Meta
                     avatar={
                       <Avatar style={{ background: WORK_TYPE_CONFIG[log.work_type]?.color }}>
@@ -308,6 +373,69 @@ export default function Daily() {
               提交日报
             </Button>
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 编辑日志弹窗 */}
+      <Modal
+        title="编辑工时记录"
+        open={editModalOpen}
+        onCancel={() => { setEditModalOpen(false); setEditingLog(null); editForm.resetFields(); }}
+        footer={null}
+        width={500}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleSaveEdit}>
+          <Form.Item
+            name="task_id"
+            label="关联任务"
+            rules={[{ required: true, message: '请选择任务' }]}
+          >
+            <Select placeholder="选择任务">
+              {myTasks.map(task => (
+                <Select.Option key={task.id} value={task.id}>
+                  [{task.project?.code}] {task.title}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item
+              name="hours"
+              label="工作时长"
+              rules={[{ required: true, message: '请输入时长' }]}
+              style={{ flex: 1 }}
+            >
+              <InputNumber 
+                min={0.5} 
+                max={24} 
+                step={0.5} 
+                addonAfter="小时" 
+                style={{ width: '100%' }} 
+              />
+            </Form.Item>
+            <Form.Item
+              name="work_type"
+              label="工作类型"
+              style={{ flex: 1 }}
+            >
+              <Select>
+                {Object.entries(WORK_TYPE_CONFIG).map(([key, config]) => (
+                  <Select.Option key={key} value={key}>{config.label}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="description"
+            label="工作内容"
+            rules={[{ required: true, message: '请输入工作内容' }]}
+          >
+            <TextArea rows={3} placeholder="描述今天做了什么..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Button onClick={() => { setEditModalOpen(false); setEditingLog(null); editForm.resetFields(); }}>取消</Button>
+            <Button type="primary" htmlType="submit">保存</Button>
+          </div>
         </Form>
       </Modal>
     </div>

@@ -1,7 +1,7 @@
 """
 周报管理API
 """
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 from decimal import Decimal
 from fastapi import APIRouter, Depends, HTTPException, status, Query
@@ -225,34 +225,49 @@ def generate_personal_weekly_report(
         WeeklyReport.week_end == request.week_end,
     ).first()
     
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该周的个人周报已存在"
-        )
-    
     # 收集数据
     data = _collect_personal_weekly_data(db, member, request.week_start, request.week_end)
     
     # 调用AI生成
     ai_result = ai_service.generate_personal_weekly_report(data)
     
-    # 创建周报记录
-    report = WeeklyReport(
-        report_type="personal",
-        member_id=target_member_id,
-        week_start=request.week_start,
-        week_end=request.week_end,
-        summary=ai_result["summary"],
-        achievements=ai_result["achievements"],
-        issues=ai_result["issues"],
-        next_week_plan=ai_result["next_week_plan"],
-        raw_data=data.model_dump(mode="json"),
-        ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
-    )
-    db.add(report)
-    db.commit()
-    db.refresh(report)
+    if existing:
+        # 更新现有周报（重新生成覆盖）
+        existing.summary = ai_result["summary"]
+        existing.achievements = ai_result["achievements"]
+        existing.issues = ai_result["issues"]
+        existing.next_week_plan = ai_result["next_week_plan"]
+        existing.raw_data = data.model_dump(mode="json")
+        existing.ai_model = settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback"
+        existing.generated_at = datetime.utcnow()
+        # 清除编辑内容和审核状态（因为重新生成了）
+        existing.edited_summary = None
+        existing.edited_achievements = None
+        existing.edited_issues = None
+        existing.edited_next_week_plan = None
+        existing.is_reviewed = False
+        existing.reviewed_by = None
+        existing.reviewed_at = None
+        db.commit()
+        db.refresh(existing)
+        report = existing
+    else:
+        # 创建新周报记录
+        report = WeeklyReport(
+            report_type="personal",
+            member_id=target_member_id,
+            week_start=request.week_start,
+            week_end=request.week_end,
+            summary=ai_result["summary"],
+            achievements=ai_result["achievements"],
+            issues=ai_result["issues"],
+            next_week_plan=ai_result["next_week_plan"],
+            raw_data=data.model_dump(mode="json"),
+            ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
     
     # 加载关联
     report = db.query(WeeklyReport).options(
@@ -290,34 +305,49 @@ def generate_project_weekly_report(
         WeeklyReport.week_end == request.week_end,
     ).first()
     
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该周的项目周报已存在"
-        )
-    
     # 收集数据
     data = _collect_project_weekly_data(db, project, request.week_start, request.week_end)
     
     # 调用AI生成
     ai_result = ai_service.generate_project_weekly_report(data)
     
-    # 创建周报记录
-    report = WeeklyReport(
-        report_type="project",
-        project_id=request.project_id,
-        week_start=request.week_start,
-        week_end=request.week_end,
-        summary=ai_result["summary"],
-        achievements=ai_result["achievements"],
-        issues=ai_result["issues"],
-        next_week_plan=ai_result["next_week_plan"],
-        raw_data=data.model_dump(mode="json"),
-        ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
-    )
-    db.add(report)
-    db.commit()
-    db.refresh(report)
+    if existing:
+        # 更新现有周报（重新生成覆盖）
+        existing.summary = ai_result["summary"]
+        existing.achievements = ai_result["achievements"]
+        existing.issues = ai_result["issues"]
+        existing.next_week_plan = ai_result["next_week_plan"]
+        existing.raw_data = data.model_dump(mode="json")
+        existing.ai_model = settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback"
+        existing.generated_at = datetime.utcnow()
+        # 清除编辑内容和审核状态（因为重新生成了）
+        existing.edited_summary = None
+        existing.edited_achievements = None
+        existing.edited_issues = None
+        existing.edited_next_week_plan = None
+        existing.is_reviewed = False
+        existing.reviewed_by = None
+        existing.reviewed_at = None
+        db.commit()
+        db.refresh(existing)
+        report = existing
+    else:
+        # 创建新周报记录
+        report = WeeklyReport(
+            report_type="project",
+            project_id=request.project_id,
+            week_start=request.week_start,
+            week_end=request.week_end,
+            summary=ai_result["summary"],
+            achievements=ai_result["achievements"],
+            issues=ai_result["issues"],
+            next_week_plan=ai_result["next_week_plan"],
+            raw_data=data.model_dump(mode="json"),
+            ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
+        )
+        db.add(report)
+        db.commit()
+        db.refresh(report)
     
     # 加载关联
     report = db.query(WeeklyReport).options(

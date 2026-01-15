@@ -12,6 +12,33 @@ from app.schemas.weekly_report import PersonalWeeklyData, ProjectWeeklyData
 class AIService:
     """AI服务类"""
     
+    @staticmethod
+    def _format_to_text(value) -> str:
+        """将AI返回的列表/字典格式化为文本字符串"""
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value
+        if isinstance(value, list):
+            lines = []
+            for item in value:
+                if isinstance(item, dict):
+                    # 处理如 issues 中的字典格式
+                    parts = []
+                    if 'description' in item:
+                        parts.append(item['description'])
+                    if 'impact' in item:
+                        parts.append(f"影响: {item['impact']}")
+                    if 'suggestion' in item:
+                        parts.append(f"建议: {item['suggestion']}")
+                    lines.append("- " + "; ".join(parts) if parts else str(item))
+                else:
+                    lines.append(f"- {item}")
+            return "\n".join(lines)
+        if isinstance(value, dict):
+            return json.dumps(value, ensure_ascii=False, indent=2)
+        return str(value)
+    
     def __init__(self):
         self.api_key = settings.DASHSCOPE_API_KEY
         self.model = settings.DASHSCOPE_MODEL
@@ -69,10 +96,10 @@ class AIService:
                 content = content.split("```")[1].split("```")[0].strip()
             result = json.loads(content)
             return {
-                "summary": result.get("summary", ""),
-                "achievements": result.get("achievements", ""),
-                "issues": result.get("issues", ""),
-                "next_week_plan": result.get("next_week_plan", ""),
+                "summary": self._format_to_text(result.get("summary", "")),
+                "achievements": self._format_to_text(result.get("achievements", "")),
+                "issues": self._format_to_text(result.get("issues", "")),
+                "next_week_plan": self._format_to_text(result.get("next_week_plan", "")),
             }
         except Exception as e:
             print(f"AI生成周报失败: {e}")
@@ -125,10 +152,10 @@ class AIService:
                 content = content.split("```")[1].split("```")[0].strip()
             result = json.loads(content)
             return {
-                "summary": result.get("summary", ""),
-                "achievements": result.get("achievements", ""),
-                "issues": result.get("issues", ""),
-                "next_week_plan": result.get("next_week_plan", ""),
+                "summary": self._format_to_text(result.get("summary", "")),
+                "achievements": self._format_to_text(result.get("achievements", "")),
+                "issues": self._format_to_text(result.get("issues", "")),
+                "next_week_plan": self._format_to_text(result.get("next_week_plan", "")),
             }
         except Exception as e:
             print(f"AI生成项目周报失败: {e}")

@@ -2,12 +2,12 @@ import { useEffect, useState, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { 
   Button, Modal, Form, Input, Select, InputNumber, DatePicker, 
-  message, Spin, Tag, Avatar, Tooltip, Dropdown 
+  message, Spin, Tag, Avatar, Tooltip, Dropdown, Popconfirm 
 } from 'antd'
 import type { MenuProps } from 'antd'
 import { 
   PlusOutlined, MoreOutlined, UserOutlined, 
-  ClockCircleOutlined, CalendarOutlined, EditOutlined,
+  ClockCircleOutlined, CalendarOutlined, EditOutlined, DeleteOutlined,
   CheckCircleOutlined, CloseCircleOutlined, LoadingOutlined
 } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -218,6 +218,29 @@ export default function Tasks() {
     } catch {
       message.error('更新失败')
     }
+  }
+
+  // 删除任务
+  const handleDelete = async () => {
+    if (!selectedTask) return
+    try {
+      await tasksApi.delete(selectedTask.id)
+      message.success('任务已删除')
+      setDetailModalOpen(false)
+      setSelectedTask(null)
+      fetchTasks({ project_id: selectedProject })
+    } catch {
+      message.error('删除失败')
+    }
+  }
+
+  // 判断是否可以删除（创建者或管理员）
+  const canDelete = () => {
+    if (!selectedTask || !user) return false
+    if (user.role === 'admin') return true
+    // 检查 created_by 字段
+    const creatorId = (selectedTask as any).created_by?.id || (selectedTask as any).created_by
+    return creatorId === user.id
   }
 
   // 渲染任务卡片
@@ -458,6 +481,19 @@ export default function Tasks() {
                     <Button icon={<EditOutlined />} onClick={startEditing}>
                       编辑
                     </Button>
+                    {canDelete() && (
+                      <Popconfirm
+                        title="确认删除"
+                        description="确定要删除这个任务吗？此操作不可撤销。"
+                        onConfirm={handleDelete}
+                        okText="确认"
+                        cancelText="取消"
+                      >
+                        <Button danger icon={<DeleteOutlined />}>
+                          删除
+                        </Button>
+                      </Popconfirm>
+                    )}
                   </div>
                 </div>
                 <h2 className="task-detail-title">{selectedTask.title}</h2>
