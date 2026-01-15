@@ -59,7 +59,7 @@ class Task(Base):
     parent_task = relationship("Task", remote_side=[id], backref="sub_tasks")
     stakeholders = relationship("TaskStakeholder", back_populates="task", cascade="all, delete-orphan")
     status_history = relationship("TaskStatusHistory", back_populates="task", cascade="all, delete-orphan")
-    work_logs = relationship("DailyWorkLog", back_populates="task")
+    work_logs = relationship("DailyWorkLog", back_populates="task", passive_deletes=True)
     
     def __repr__(self):
         return f"<Task(id={self.id}, title={self.title}, status={self.status})>"

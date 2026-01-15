@@ -38,7 +38,23 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
 }
 
 // 看板列配置
-const KANBAN_COLUMNS: TaskStatus[] = ['todo', 'task_review', 'in_progress', 'result_review', 'done']
+const KANBAN_COLUMNS: TaskStatus[] = ['todo', 'task_review', 'in_progress', 'result_review', 'done', 'cancelled']
+
+// 状态流转规则：定义每个状态可以转换到哪些状态
+const STATUS_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
+  todo: ['task_review', 'cancelled'],
+  task_review: ['todo', 'in_progress', 'cancelled'],
+  in_progress: ['result_review', 'cancelled'],
+  result_review: ['in_progress', 'done', 'cancelled'],
+  done: ['cancelled'],
+  cancelled: ['todo'],
+}
+
+// 判断状态是否可以转换
+const canTransitionTo = (currentStatus: TaskStatus, targetStatus: TaskStatus): boolean => {
+  if (currentStatus === targetStatus) return true // 当前状态始终可选
+  return STATUS_TRANSITIONS[currentStatus]?.includes(targetStatus) ?? false
+}
 
 export default function Tasks() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -180,6 +196,8 @@ export default function Tasks() {
   // 开始编辑任务
   const startEditing = () => {
     if (selectedTask) {
+      // 提取干系人ID列表
+      const stakeholderIds = selectedTask.stakeholders?.map((s: any) => s.member_id || s.member?.id) || []
       editForm.setFieldsValue({
         title: selectedTask.title,
         description: selectedTask.description,
@@ -187,6 +205,8 @@ export default function Tasks() {
         priority: selectedTask.priority,
         estimated_hours: selectedTask.estimated_hours,
         due_date: selectedTask.due_date ? dayjs(selectedTask.due_date) : undefined,
+        start_date: selectedTask.start_date ? dayjs(selectedTask.start_date) : undefined,
+        stakeholder_ids: stakeholderIds,
       })
       setIsEditing(true)
     }
@@ -199,22 +219,20 @@ export default function Tasks() {
   }
 
   // 更新任务
-  const handleUpdate = async (values: Partial<Task> & { due_date?: dayjs.Dayjs }) => {
+  const handleUpdate = async (values: Partial<Task> & { due_date?: dayjs.Dayjs; start_date?: dayjs.Dayjs }) => {
     if (!selectedTask) return
     try {
       await tasksApi.update(selectedTask.id, {
         ...values,
         due_date: values.due_date?.format('YYYY-MM-DD'),
+        start_date: values.start_date?.format('YYYY-MM-DD'),
       })
       message.success('任务更新成功')
       setIsEditing(false)
       fetchTasks({ project_id: selectedProject })
-      // 更新当前选中的任务
-      setSelectedTask({
-        ...selectedTask,
-        ...values,
-        due_date: values.due_date?.format('YYYY-MM-DD'),
-      })
+      // 重新获取任务详情以获取最新的干系人信息
+      const detailRes = await tasksApi.getById(selectedTask.id)
+      setSelectedTask(detailRes.data as TaskDetail)
     } catch {
       message.error('更新失败')
     }
@@ -247,8 +265,9 @@ export default function Tasks() {
   const renderTaskCard = (task: Task) => {
     const priorityConfig = PRIORITY_CONFIG[task.priority]
     
+    // 只显示可转换的状态
     const menuItems: MenuProps['items'] = KANBAN_COLUMNS
-      .filter(s => s !== task.status)
+      .filter(s => s !== task.status && canTransitionTo(task.status, s))
       .map(status => ({
         key: status,
         label: `移至 ${STATUS_CONFIG[status].label}`,
@@ -470,13 +489,14 @@ export default function Tasks() {
                       style={{ width: 120 }}
                     >
                       {KANBAN_COLUMNS.map(s => (
-                        <Select.Option key={s} value={s}>
+                        <Select.Option 
+                          key={s} 
+                          value={s}
+                          disabled={!canTransitionTo(selectedTask.status, s)}
+                        >
                           {STATUS_CONFIG[s].label}
                         </Select.Option>
                       ))}
-                      <Select.Option key="cancelled" value="cancelled">
-                        {STATUS_CONFIG.cancelled.label}
-                      </Select.Option>
                     </Select>
                     <Button icon={<EditOutlined />} onClick={startEditing}>
                       编辑
@@ -630,10 +650,20 @@ export default function Tasks() {
                   <Form.Item name="estimated_hours" label="预估工时" style={{ flex: 1 }}>
                     <InputNumber min={0.5} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
                   </Form.Item>
-                  <Form.Item name="due_date" label="截止日期" style={{ flex: 1 }}>
+                  <Form.Item name="start_date" label="开始日期" style={{ flex: 1 }}>
                     <DatePicker style={{ width: '100%' }} />
                   </Form.Item>
                 </div>
+                <Form.Item name="due_date" label="截止日期">
+                  <DatePicker style={{ width: '100%' }} />
+                </Form.Item>
+                <Form.Item name="stakeholder_ids" label="干系人（可多选）">
+                  <Select mode="multiple" placeholder="选择干系人" allowClear>
+                    {members.map(m => (
+                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                    ))}
+                  </Select>
+                </Form.Item>
                 <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
                   <Button onClick={cancelEditing}>取消</Button>
                   <Button type="primary" htmlType="submit">保存</Button>
