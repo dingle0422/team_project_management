@@ -59,8 +59,8 @@ export interface Meeting {
   content?: string
   attendee_ids?: number[]
   attendees?: MemberBrief[]
-  created_by: number
-  creator?: MemberBrief
+  created_by?: MemberBrief
+  creator?: MemberBrief  // 兼容旧字段名
   created_at: string
   updated_at: string
 }

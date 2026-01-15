@@ -151,7 +151,7 @@ export default function Daily() {
   const dateCellRender = (value: Dayjs) => {
     const dateStr = value.format('YYYY-MM-DD')
     const dayLogs = logs.filter(log => log.work_date === dateStr)
-    const totalHours = dayLogs.reduce((sum, log) => sum + log.hours, 0)
+    const totalHours = dayLogs.reduce((sum, log) => sum + Number(log.hours), 0)
     
     if (dayLogs.length === 0) return null
     
@@ -293,7 +293,7 @@ export default function Daily() {
               <div className="stat-item">
                 <span className="label">总工时</span>
                 <span className="value">
-                  {selectedDateLogs.reduce((sum, log) => sum + log.hours, 0)}h
+                  {selectedDateLogs.reduce((sum, log) => sum + Number(log.hours), 0)}h
                 </span>
               </div>
               <div className="stat-item">

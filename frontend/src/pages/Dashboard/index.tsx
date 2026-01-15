@@ -345,7 +345,7 @@ export default function Dashboard() {
                   <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6B7280', flexWrap: 'wrap' }}>
                     <span><CalendarOutlined /> {meeting.meeting_date}</span>
                     <span>{meeting.project?.name}</span>
-                    {meeting.creator && <span>👤 {meeting.creator.name}</span>}
+                    {meeting.created_by && <span>👤 {meeting.created_by.name}</span>}
                   </div>
                 </div>
               ))}
@@ -492,11 +492,11 @@ export default function Dashboard() {
       >
         {selectedMeeting && (
           <div>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14 }}>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14, flexWrap: 'wrap' }}>
               <span><CalendarOutlined /> 会议日期: {selectedMeeting.meeting_date}</span>
               {selectedMeeting.location && <span>📍 地点: {selectedMeeting.location}</span>}
               {selectedMeeting.project && <span>📁 项目: {selectedMeeting.project.name}</span>}
-              {selectedMeeting.creator && <span>👤 创建人: {selectedMeeting.creator.name}</span>}
+              {selectedMeeting.created_by && <span>👤 创建人: {selectedMeeting.created_by.name}</span>}
             </div>
             
             {selectedMeeting.attendees && selectedMeeting.attendees.length > 0 && (
