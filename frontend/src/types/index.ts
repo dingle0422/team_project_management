@@ -97,8 +97,12 @@ export interface Task {
 
 export interface TaskStakeholder {
   id: number
-  member: MemberBrief
+  member_id: number
+  name: string
+  avatar_url?: string
   role: 'reviewer' | 'collaborator' | 'stakeholder'
+  // 兼容旧格式
+  member?: MemberBrief
 }
 
 // 状态变更审批

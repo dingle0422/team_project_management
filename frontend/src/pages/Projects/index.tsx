@@ -2,13 +2,16 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Button, Modal, Form, Input, Select, DatePicker, 
-  message, Spin, Tag, Progress, Card, Row, Col 
+  message, Spin, Tag, Progress, Card, Row, Col, List, Empty
 } from 'antd'
-import { PlusOutlined, TeamOutlined, CalendarOutlined, FolderOutlined } from '@ant-design/icons'
+import { 
+  PlusOutlined, TeamOutlined, CalendarOutlined, FolderOutlined,
+  EditOutlined, UnorderedListOutlined, FileTextOutlined, EyeOutlined
+} from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAppStore } from '@/store/useAppStore'
-import { projectsApi } from '@/services/api'
-import type { Project } from '@/types'
+import { projectsApi, meetingsApi } from '@/services/api'
+import type { Project, Meeting } from '@/types'
 import './index.css'
 
 const { TextArea } = Input
@@ -27,7 +30,18 @@ export default function Projects() {
   const { projects, fetchProjects, projectsLoading, members } = useAppStore()
   
   const [createModalOpen, setCreateModalOpen] = useState(false)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
+  const [meetingsModalOpen, setMeetingsModalOpen] = useState(false)
+  const [meetingDetailModalOpen, setMeetingDetailModalOpen] = useState(false)
+  
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
+  const [projectMeetings, setProjectMeetings] = useState<Meeting[]>([])
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
+  const [meetingsLoading, setMeetingsLoading] = useState(false)
+  
   const [form] = Form.useForm()
+  const [editForm] = Form.useForm()
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
 
   useEffect(() => {
@@ -51,6 +65,84 @@ export default function Projects() {
       fetchProjects()
     } catch {
       message.error('创建失败')
+    }
+  }
+
+  // 打开项目详情
+  const openProjectDetail = (project: Project) => {
+    setSelectedProject(project)
+    setDetailModalOpen(true)
+  }
+
+  // 打开编辑弹窗
+  const openEditModal = () => {
+    if (selectedProject) {
+      editForm.setFieldsValue({
+        name: selectedProject.name,
+        code: selectedProject.code,
+        description: selectedProject.description,
+        status: selectedProject.status,
+        start_date: selectedProject.start_date ? dayjs(selectedProject.start_date) : undefined,
+        end_date: selectedProject.end_date ? dayjs(selectedProject.end_date) : undefined,
+      })
+      setDetailModalOpen(false)
+      setEditModalOpen(true)
+    }
+  }
+
+  // 更新项目
+  const handleUpdate = async (values: Partial<Project> & { 
+    start_date?: dayjs.Dayjs
+    end_date?: dayjs.Dayjs 
+  }) => {
+    if (!selectedProject) return
+    try {
+      await projectsApi.update(selectedProject.id, {
+        ...values,
+        start_date: values.start_date?.format('YYYY-MM-DD'),
+        end_date: values.end_date?.format('YYYY-MM-DD'),
+      })
+      message.success('项目更新成功')
+      setEditModalOpen(false)
+      editForm.resetFields()
+      fetchProjects()
+    } catch {
+      message.error('更新失败')
+    }
+  }
+
+  // 跳转到任务页面
+  const goToTasks = () => {
+    if (selectedProject) {
+      setDetailModalOpen(false)
+      navigate(`/tasks?project=${selectedProject.id}`)
+    }
+  }
+
+  // 打开会议纪要列表
+  const openMeetingsList = async () => {
+    if (!selectedProject) return
+    setDetailModalOpen(false)
+    setMeetingsModalOpen(true)
+    setMeetingsLoading(true)
+    try {
+      const res = await meetingsApi.getList({ project_id: selectedProject.id })
+      setProjectMeetings(res.data.items)
+    } catch {
+      message.error('获取会议纪要失败')
+    } finally {
+      setMeetingsLoading(false)
+    }
+  }
+
+  // 打开会议详情
+  const openMeetingDetail = async (meeting: Meeting) => {
+    try {
+      const res = await meetingsApi.getById(meeting.id)
+      setSelectedMeeting(res.data)
+      setMeetingDetailModalOpen(true)
+    } catch {
+      message.error('获取会议详情失败')
     }
   }
 
@@ -104,7 +196,7 @@ export default function Projects() {
             <Card 
               className="project-card"
               hoverable
-              onClick={() => navigate(`/tasks?project=${project.id}`)}
+              onClick={() => openProjectDetail(project)}
             >
               <div className="project-card-header">
                 <div className="project-icon">
@@ -195,6 +287,224 @@ export default function Projects() {
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 项目详情弹窗 */}
+      <Modal
+        title={null}
+        open={detailModalOpen}
+        onCancel={() => setDetailModalOpen(false)}
+        footer={null}
+        width={500}
+      >
+        {selectedProject && (
+          <div className="project-detail">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+              <div style={{ 
+                width: 48, height: 48, borderRadius: 12, 
+                background: '#FEF3C7', display: 'flex', 
+                alignItems: 'center', justifyContent: 'center',
+                fontSize: 24
+              }}>
+                <FolderOutlined style={{ color: '#F59E0B' }} />
+              </div>
+              <div>
+                <h2 style={{ margin: 0 }}>{selectedProject.name}</h2>
+                <p style={{ margin: 0, color: '#6B7280' }}>{selectedProject.code}</p>
+              </div>
+              <Tag color={STATUS_CONFIG[selectedProject.status]?.color} style={{ marginLeft: 'auto' }}>
+                {STATUS_CONFIG[selectedProject.status]?.label}
+              </Tag>
+            </div>
+            
+            {selectedProject.description && (
+              <p style={{ color: '#6B7280', marginBottom: 16 }}>{selectedProject.description}</p>
+            )}
+            
+            <div style={{ display: 'flex', gap: 16, marginBottom: 20, color: '#6B7280', fontSize: 14 }}>
+              {selectedProject.start_date && (
+                <span><CalendarOutlined /> 开始: {selectedProject.start_date}</span>
+              )}
+              {selectedProject.end_date && (
+                <span><CalendarOutlined /> 截止: {selectedProject.end_date}</span>
+              )}
+              <span><TeamOutlined /> 负责人: {selectedProject.owner?.name || '-'}</span>
+            </div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <Button 
+                type="primary" 
+                icon={<EditOutlined />} 
+                block
+                onClick={openEditModal}
+              >
+                编辑项目
+              </Button>
+              <Button 
+                icon={<UnorderedListOutlined />} 
+                block
+                onClick={goToTasks}
+              >
+                查看任务
+              </Button>
+              <Button 
+                icon={<FileTextOutlined />} 
+                block
+                onClick={openMeetingsList}
+              >
+                会议纪要
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 编辑项目弹窗 */}
+      <Modal
+        title="编辑项目"
+        open={editModalOpen}
+        onCancel={() => setEditModalOpen(false)}
+        footer={null}
+        width={600}
+      >
+        <Form form={editForm} layout="vertical" onFinish={handleUpdate}>
+          <Form.Item
+            name="name"
+            label="项目名称"
+            rules={[{ required: true, message: '请输入项目名称' }]}
+          >
+            <Input placeholder="输入项目名称" />
+          </Form.Item>
+          <Form.Item
+            name="code"
+            label="项目代号"
+            rules={[{ required: true, message: '请输入项目代号' }]}
+          >
+            <Input placeholder="例如: PROJ-001" />
+          </Form.Item>
+          <Form.Item name="description" label="项目描述">
+            <TextArea rows={3} placeholder="描述项目目标和范围..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item name="start_date" label="开始日期" style={{ flex: 1 }}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item name="end_date" label="结束日期" style={{ flex: 1 }}>
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          <Form.Item name="status" label="项目状态">
+            <Select>
+              {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                <Select.Option key={key} value={key}>{config.label}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item>
+            <Button type="primary" htmlType="submit" block>
+              保存修改
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 会议纪要列表弹窗 */}
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <FileTextOutlined />
+            {selectedProject?.name} - 会议纪要
+          </div>
+        }
+        open={meetingsModalOpen}
+        onCancel={() => setMeetingsModalOpen(false)}
+        footer={null}
+        width={600}
+      >
+        {meetingsLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
+            <Spin />
+          </div>
+        ) : projectMeetings.length > 0 ? (
+          <List
+            dataSource={projectMeetings}
+            renderItem={(meeting) => (
+              <List.Item
+                style={{ cursor: 'pointer', padding: '12px 0' }}
+                onClick={() => openMeetingDetail(meeting)}
+                actions={[
+                  <Button 
+                    type="link" 
+                    icon={<EyeOutlined />}
+                    onClick={(e) => { e.stopPropagation(); openMeetingDetail(meeting); }}
+                  >
+                    查看
+                  </Button>
+                ]}
+              >
+                <List.Item.Meta
+                  title={meeting.title}
+                  description={
+                    <div style={{ display: 'flex', gap: 16, color: '#6B7280', fontSize: 12 }}>
+                      <span><CalendarOutlined /> {meeting.meeting_date}</span>
+                      {meeting.creator && <span><TeamOutlined /> {meeting.creator.name}</span>}
+                    </div>
+                  }
+                />
+              </List.Item>
+            )}
+          />
+        ) : (
+          <Empty description="暂无会议纪要" />
+        )}
+      </Modal>
+
+      {/* 会议详情弹窗 */}
+      <Modal
+        title={selectedMeeting?.title}
+        open={meetingDetailModalOpen}
+        onCancel={() => setMeetingDetailModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        {selectedMeeting && (
+          <div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14 }}>
+              <span><CalendarOutlined /> 会议日期: {selectedMeeting.meeting_date}</span>
+              {selectedMeeting.location && <span>📍 地点: {selectedMeeting.location}</span>}
+              {selectedMeeting.creator && <span><TeamOutlined /> 创建人: {selectedMeeting.creator.name}</span>}
+            </div>
+            
+            {selectedMeeting.attendees && selectedMeeting.attendees.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <h4>参会人员</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {selectedMeeting.attendees.map(a => (
+                    <Tag key={a.id}>{a.name}</Tag>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {selectedMeeting.summary && (
+              <div style={{ marginBottom: 16 }}>
+                <h4>会议摘要</h4>
+                <p style={{ whiteSpace: 'pre-wrap', background: '#F9FAFB', padding: 12, borderRadius: 8 }}>
+                  {selectedMeeting.summary}
+                </p>
+              </div>
+            )}
+            
+            {selectedMeeting.content && (
+              <div>
+                <h4>会议内容</h4>
+                <div style={{ whiteSpace: 'pre-wrap', background: '#F9FAFB', padding: 12, borderRadius: 8 }}>
+                  {selectedMeeting.content}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   )

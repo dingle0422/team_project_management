@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, message, Spin } from 'antd'
-import { PlusOutlined, EditOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 import { tasksApi, dailyLogsApi, meetingsApi } from '@/services/api'
-import type { Task, DailyWorkLog } from '@/types'
+import type { Task, DailyWorkLog, Meeting } from '@/types'
 import './index.css'
 
 const { TextArea } = Input
@@ -32,10 +32,13 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ todayTasks: 0, weekHours: 0, weekCompleted: 0, activeProjects: 0 })
   const [todayLogs, setTodayLogs] = useState<DailyWorkLog[]>([])
+  const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([])
+  const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
   
   // 弹窗状态
   const [dailyModalOpen, setDailyModalOpen] = useState(false)
   const [meetingModalOpen, setMeetingModalOpen] = useState(false)
+  const [meetingDetailModalOpen, setMeetingDetailModalOpen] = useState(false)
   const [dailyForm] = Form.useForm()
   const [meetingForm] = Form.useForm()
 
@@ -52,6 +55,10 @@ export default function Dashboard() {
       const today = dayjs().format('YYYY-MM-DD')
       const logsRes = await dailyLogsApi.getLogs({ work_date: today })
       setTodayLogs(logsRes.data.items)
+      
+      // 获取最近会议纪要
+      const meetingsRes = await meetingsApi.getList({ page_size: 5 })
+      setRecentMeetings(meetingsRes.data.items)
       
       // 获取统计
       const weekStart = dayjs().startOf('week').format('YYYY-MM-DD')
@@ -118,8 +125,22 @@ export default function Dashboard() {
       message.success('会议纪要创建成功')
       setMeetingModalOpen(false)
       meetingForm.resetFields()
+      // 刷新会议纪要列表
+      const meetingsRes = await meetingsApi.getList({ page_size: 5 })
+      setRecentMeetings(meetingsRes.data.items)
     } catch (error) {
       message.error('创建失败')
+    }
+  }
+
+  // 查看会议详情
+  const openMeetingDetail = async (meeting: Meeting) => {
+    try {
+      const res = await meetingsApi.getById(meeting.id)
+      setSelectedMeeting(res.data)
+      setMeetingDetailModalOpen(true)
+    } catch {
+      message.error('获取会议详情失败')
     }
   }
 
@@ -293,6 +314,33 @@ export default function Dashboard() {
               新建会议纪要
             </Button>
           </div>
+          {recentMeetings.length > 0 && (
+            <div className="recent-meetings" style={{ marginTop: 16 }}>
+              {recentMeetings.map(meeting => (
+                <div 
+                  key={meeting.id} 
+                  className="meeting-item"
+                  onClick={() => openMeetingDetail(meeting)}
+                  style={{ 
+                    padding: '12px', 
+                    background: '#F9FAFB', 
+                    borderRadius: 8, 
+                    marginBottom: 8,
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = '#F3F4F6')}
+                  onMouseLeave={e => (e.currentTarget.style.background = '#F9FAFB')}
+                >
+                  <div style={{ fontWeight: 500, marginBottom: 4 }}>{meeting.title}</div>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6B7280' }}>
+                    <span><CalendarOutlined /> {meeting.meeting_date}</span>
+                    <span>{meeting.project?.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -422,6 +470,62 @@ export default function Dashboard() {
             </Button>
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* 会议详情弹窗 */}
+      <Modal
+        title={selectedMeeting?.title}
+        open={meetingDetailModalOpen}
+        onCancel={() => setMeetingDetailModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        {selectedMeeting && (
+          <div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14 }}>
+              <span><CalendarOutlined /> 会议日期: {selectedMeeting.meeting_date}</span>
+              {selectedMeeting.location && <span>📍 地点: {selectedMeeting.location}</span>}
+              {selectedMeeting.project && <span>📁 项目: {selectedMeeting.project.name}</span>}
+              {selectedMeeting.creator && <span>👤 创建人: {selectedMeeting.creator.name}</span>}
+            </div>
+            
+            {selectedMeeting.attendees && selectedMeeting.attendees.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <h4 style={{ marginBottom: 8 }}>参会人员</h4>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                  {selectedMeeting.attendees.map(a => (
+                    <span key={a.id} style={{ 
+                      padding: '4px 12px', 
+                      background: '#F3F4F6', 
+                      borderRadius: 16,
+                      fontSize: 13
+                    }}>
+                      {a.name}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {selectedMeeting.summary && (
+              <div style={{ marginBottom: 16 }}>
+                <h4 style={{ marginBottom: 8 }}>会议摘要</h4>
+                <p style={{ whiteSpace: 'pre-wrap', background: '#F9FAFB', padding: 12, borderRadius: 8, margin: 0 }}>
+                  {selectedMeeting.summary}
+                </p>
+              </div>
+            )}
+            
+            {selectedMeeting.content && (
+              <div>
+                <h4 style={{ marginBottom: 8 }}>会议内容</h4>
+                <div style={{ whiteSpace: 'pre-wrap', background: '#F9FAFB', padding: 12, borderRadius: 8 }}>
+                  {selectedMeeting.content}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
     </div>
   )

@@ -54,6 +54,7 @@ export default function Tasks() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<TaskDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [approving, setApproving] = useState(false)
   const [form] = Form.useForm()
@@ -68,31 +69,31 @@ export default function Tasks() {
     if (taskParam && tasks.length > 0) {
       const taskId = parseInt(taskParam)
       const task = tasks.find(t => t.id === taskId)
+      
+      // 清除URL中的task参数
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('task')
+      setSearchParams(newParams, { replace: true })
+      
       if (task) {
-        setSelectedTask(task)
-        setDetailModalOpen(true)
-        // 清除URL中的task参数
-        const newParams = new URLSearchParams(searchParams)
-        newParams.delete('task')
-        setSearchParams(newParams, { replace: true })
+        openTaskDetail(task)
       } else {
         // 如果任务不在当前列表中，尝试从API获取
+        setDetailLoading(true)
+        setDetailModalOpen(true)
         tasksApi.getById(taskId).then(res => {
           if (res.data) {
-            setSelectedTask(res.data)
-            setDetailModalOpen(true)
+            setSelectedTask(res.data as TaskDetail)
           }
         }).catch(() => {
           message.warning('未找到指定任务')
+          setDetailModalOpen(false)
         }).finally(() => {
-          // 清除URL中的task参数
-          const newParams = new URLSearchParams(searchParams)
-          newParams.delete('task')
-          setSearchParams(newParams, { replace: true })
+          setDetailLoading(false)
         })
       }
     }
-  }, [taskParam, tasks, searchParams, setSearchParams])
+  }, [taskParam, tasks.length])
 
   // 当选择项目改变时更新 URL
   const handleProjectChange = (projectId: number | undefined) => {
@@ -143,13 +144,18 @@ export default function Tasks() {
   // 打开任务详情
   const openTaskDetail = async (task: Task) => {
     setIsEditing(false)
+    setSelectedTask(task as TaskDetail)  // 先设置基本信息
     setDetailModalOpen(true)
+    setDetailLoading(true)
     // 获取完整的任务详情（包括审批信息）
     try {
       const res = await tasksApi.getById(task.id)
       setSelectedTask(res.data as TaskDetail)
-    } catch {
-      setSelectedTask(task as TaskDetail)
+    } catch (err) {
+      console.error('Failed to load task detail:', err)
+      // 保持使用基本信息
+    } finally {
+      setDetailLoading(false)
     }
   }
 
@@ -421,14 +427,18 @@ export default function Tasks() {
         width={700}
         className="task-detail-modal"
       >
-        {selectedTask && (
+        {detailLoading ? (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: 50 }}>
+            <Spin size="large" />
+          </div>
+        ) : selectedTask && (
           <div className="task-detail">
             {!isEditing ? (
               // 查看模式
               <>
                 <div className="task-detail-header">
-                  <Tag color={PRIORITY_CONFIG[selectedTask.priority].color}>
-                    {PRIORITY_CONFIG[selectedTask.priority].label}
+                  <Tag color={PRIORITY_CONFIG[selectedTask.priority]?.color || '#6B7280'}>
+                    {PRIORITY_CONFIG[selectedTask.priority]?.label || selectedTask.priority}
                   </Tag>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <Select
@@ -489,9 +499,9 @@ export default function Tasks() {
                   <div className="task-detail-stakeholders">
                     <h4>干系人</h4>
                     <div className="stakeholder-list">
-                      {selectedTask.stakeholders.map(s => (
+                      {selectedTask.stakeholders.map((s: any) => (
                         <Tag key={s.id}>
-                          {s.member.name} ({s.role === 'reviewer' ? '评审人' : s.role === 'collaborator' ? '协作者' : '干系人'})
+                          {s.name || s.member?.name} ({s.role === 'reviewer' ? '评审人' : s.role === 'collaborator' ? '协作者' : '干系人'})
                         </Tag>
                       ))}
                     </div>
