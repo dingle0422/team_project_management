@@ -51,9 +51,13 @@ export default function Dashboard() {
     try {
       await fetchMyTasks()
       
-      // 获取今日工作日志
+      // 获取今日工作日志（只获取当前用户自己的）
       const today = dayjs().format('YYYY-MM-DD')
-      const logsRes = await dailyLogsApi.getLogs({ work_date: today })
+      const currentUserId = useAuthStore.getState().user?.id
+      const logsRes = await dailyLogsApi.getLogs({ 
+        work_date: today, 
+        member_id: currentUserId 
+      })
       setTodayLogs(logsRes.data.items)
       
       // 获取最近会议纪要
@@ -288,6 +292,11 @@ export default function Dashboard() {
                     <span>{log.hours}h</span>
                     <span>{log.description}</span>
                   </div>
+                  {log.member && (
+                    <div className="log-creator" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>
+                      👤 {log.member.name}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -333,9 +342,10 @@ export default function Dashboard() {
                   onMouseLeave={e => (e.currentTarget.style.background = '#F9FAFB')}
                 >
                   <div style={{ fontWeight: 500, marginBottom: 4 }}>{meeting.title}</div>
-                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6B7280' }}>
+                  <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6B7280', flexWrap: 'wrap' }}>
                     <span><CalendarOutlined /> {meeting.meeting_date}</span>
                     <span>{meeting.project?.name}</span>
+                    {meeting.creator && <span>👤 {meeting.creator.name}</span>}
                   </div>
                 </div>
               ))}
