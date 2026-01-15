@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, message, Spin } from 'antd'
 import { PlusOutlined, EditOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
@@ -25,6 +25,7 @@ const formatDate = () => {
 }
 
 export default function Dashboard() {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const { projects, myTasks, fetchMyTasks, fetchMeetings, meetings } = useAppStore()
   
@@ -80,11 +81,12 @@ export default function Dashboard() {
     tomorrow_plan?: string
   }) => {
     try {
-      const task = myTasks.find(t => t.id === values.task_id)
+      const workDate = dayjs().format('YYYY-MM-DD')
       await dailyLogsApi.quickSubmit({
-        work_date: dayjs().format('YYYY-MM-DD'),
-        logs: [{
+        report_date: workDate,
+        work_logs: [{
           task_id: values.task_id,
+          work_date: workDate,
           hours: values.hours,
           description: values.description,
           work_type: values.work_type,
@@ -163,28 +165,28 @@ export default function Dashboard() {
 
       {/* 统计卡片 */}
       <div className="stats-grid">
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/tasks')}>
           <div className="stat-icon" style={{ background: '#FEF3C7' }}>📋</div>
           <div className="stat-content">
             <div className="stat-value">{stats.todayTasks}</div>
             <div className="stat-label">待处理任务</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/daily')}>
           <div className="stat-icon" style={{ background: '#DBEAFE' }}>⏰</div>
           <div className="stat-content">
             <div className="stat-value">{stats.weekHours}h</div>
             <div className="stat-label">本周已记录工时</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/tasks')}>
           <div className="stat-icon" style={{ background: '#D1FAE5' }}>✅</div>
           <div className="stat-content">
             <div className="stat-value">{stats.weekCompleted}</div>
             <div className="stat-label">本周完成任务</div>
           </div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card clickable" onClick={() => navigate('/projects')}>
           <div className="stat-icon" style={{ background: '#E0E7FF' }}>📁</div>
           <div className="stat-content">
             <div className="stat-value">{stats.activeProjects}</div>

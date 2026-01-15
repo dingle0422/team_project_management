@@ -104,7 +104,7 @@ export default function Projects() {
             <Card 
               className="project-card"
               hoverable
-              onClick={() => navigate(`/projects/${project.id}`)}
+              onClick={() => navigate(`/tasks?project=${project.id}`)}
             >
               <div className="project-card-header">
                 <div className="project-icon">

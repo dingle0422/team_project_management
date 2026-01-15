@@ -61,7 +61,7 @@ class MeetingBrief(BaseModel):
     """会议纪要简要信息"""
     id: int
     title: str
-    meeting_date: date
+    meeting_date: datetime  # 数据库存储的是 datetime 类型
     
     class Config:
         from_attributes = True

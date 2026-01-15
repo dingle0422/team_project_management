@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { 
   Button, Modal, Form, Input, Select, InputNumber, DatePicker, 
   message, Spin, Tag, Avatar, Tooltip, Dropdown 
@@ -38,9 +39,14 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string }> = 
 const KANBAN_COLUMNS: TaskStatus[] = ['todo', 'task_review', 'in_progress', 'outcome_review', 'completed']
 
 export default function Tasks() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const { projects, members, tasks, fetchTasks, tasksLoading } = useAppStore()
   
-  const [selectedProject, setSelectedProject] = useState<number | undefined>()
+  // 从 URL 参数初始化项目筛选
+  const projectParam = searchParams.get('project')
+  const [selectedProject, setSelectedProject] = useState<number | undefined>(
+    projectParam ? parseInt(projectParam) : undefined
+  )
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
@@ -49,6 +55,16 @@ export default function Tasks() {
   useEffect(() => {
     fetchTasks({ project_id: selectedProject })
   }, [selectedProject, fetchTasks])
+
+  // 当选择项目改变时更新 URL
+  const handleProjectChange = (projectId: number | undefined) => {
+    setSelectedProject(projectId)
+    if (projectId) {
+      setSearchParams({ project: String(projectId) })
+    } else {
+      setSearchParams({})
+    }
+  }
 
   // 按状态分组任务
   const getTasksByStatus = useCallback((status: TaskStatus) => {
@@ -172,7 +188,7 @@ export default function Tasks() {
             allowClear
             style={{ width: 200 }}
             value={selectedProject}
-            onChange={setSelectedProject}
+            onChange={handleProjectChange}
           >
             {projects.map(p => (
               <Select.Option key={p.id} value={p.id}>

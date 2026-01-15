@@ -208,9 +208,10 @@ export const dailyLogsApi = {
   
   // 快速提交日报
   quickSubmit: (data: {
-    work_date: string
-    logs: Array<{
+    report_date: string
+    work_logs: Array<{
       task_id: number
+      work_date: string
       hours: number
       description: string
       work_type?: string
