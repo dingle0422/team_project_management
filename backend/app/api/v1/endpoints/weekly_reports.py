@@ -190,7 +190,7 @@ def get_weekly_report(
 
 # ==================== 生成个人周报 ====================
 
-@router.post("/personal/generate", response_model=Response[WeeklyReportInfo])
+@router.post("/generate/personal", response_model=Response[WeeklyReportInfo])
 def generate_personal_weekly_report(
     *,
     db: Session = Depends(get_db),
@@ -248,7 +248,7 @@ def generate_personal_weekly_report(
         issues=ai_result["issues"],
         next_week_plan=ai_result["next_week_plan"],
         raw_data=data.model_dump(),
-        ai_model=settings.OPENAI_MODEL if ai_service.is_available() else "fallback",
+        ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
     )
     db.add(report)
     db.commit()
@@ -264,7 +264,7 @@ def generate_personal_weekly_report(
 
 # ==================== 生成项目周报 ====================
 
-@router.post("/project/generate", response_model=Response[WeeklyReportInfo])
+@router.post("/generate/project", response_model=Response[WeeklyReportInfo])
 def generate_project_weekly_report(
     *,
     db: Session = Depends(get_db),
@@ -313,7 +313,7 @@ def generate_project_weekly_report(
         issues=ai_result["issues"],
         next_week_plan=ai_result["next_week_plan"],
         raw_data=data.model_dump(),
-        ai_model=settings.OPENAI_MODEL if ai_service.is_available() else "fallback",
+        ai_model=settings.DASHSCOPE_MODEL if ai_service.is_available() else "fallback",
     )
     db.add(report)
     db.commit()
