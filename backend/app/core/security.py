@@ -57,7 +57,7 @@ def create_access_token(
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[str]:
+def decode_access_token(token: str) -> Optional[dict]:
     """
     解码JWT令牌
     
@@ -65,7 +65,7 @@ def decode_access_token(token: str) -> Optional[str]:
         token: JWT令牌字符串
     
     Returns:
-        解码后的subject（用户ID），如果无效则返回None
+        解码后的payload字典，如果无效则返回None
     """
     try:
         payload = jwt.decode(
@@ -73,6 +73,6 @@ def decode_access_token(token: str) -> Optional[str]:
             settings.SECRET_KEY,
             algorithms=[settings.ALGORITHM]
         )
-        return payload.get("sub")
+        return payload
     except JWTError:
         return None
