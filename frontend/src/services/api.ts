@@ -238,7 +238,7 @@ export const dailyLogsApi = {
   getStats: (params?: { member_id?: number; start_date?: string; end_date?: string }): Promise<ApiResponse<{
     total_hours: number
     by_project: Array<{ project_id: number; project_name: string; hours: number }>
-    by_type: Array<{ work_type: string; hours: number }>
+    by_task_type: Array<{ work_type: string; hours: number }>
   }>> =>
     api.get('/daily-logs/stats', { params }),
 }

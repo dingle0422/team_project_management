@@ -20,7 +20,7 @@ export default function Analytics() {
   const [stats, setStats] = useState<{
     total_hours: number
     by_project: Array<{ project_id: number; project_name: string; hours: number }>
-    by_type: Array<{ work_type: string; hours: number }>
+    by_task_type: Array<{ work_type: string; hours: number }>
   } | null>(null)
 
   useEffect(() => {
@@ -202,7 +202,7 @@ export default function Analytics() {
         {/* 工作类型分布 */}
         <Col xs={24} lg={12}>
           <Card title="本周工作类型分布" className="chart-card">
-            {(stats?.by_type || []).length === 0 ? (
+            {(stats?.by_task_type || []).length === 0 ? (
               <div style={{ 
                 height: 300, 
                 display: 'flex', 
@@ -219,7 +219,7 @@ export default function Analytics() {
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
                   <Pie
-                    data={(stats?.by_type || []).map((item, index) => ({
+                    data={(stats?.by_task_type || []).map((item, index) => ({
                       name: workTypeMap[item.work_type] || item.work_type,
                       value: item.hours,
                       color: COLORS[index % COLORS.length],
@@ -230,7 +230,7 @@ export default function Analytics() {
                     dataKey="value"
                     label={({ name, value }) => `${name}: ${value}h`}
                   >
-                    {(stats?.by_type || []).map((entry, index) => (
+                    {(stats?.by_task_type || []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

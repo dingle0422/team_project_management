@@ -165,9 +165,6 @@ export default function Dashboard() {
       const windowStart = centerDate.subtract(1, 'week').startOf('day')
       const windowEnd = centerDate.add(1, 'week').endOf('day')
       
-      console.log('Time window:', windowStart.format('YYYY-MM-DD'), 'to', windowEnd.format('YYYY-MM-DD'))
-      console.log('Tasks count:', tasks.length)
-      
       // 获取通知
       const notificationsRes = await notificationsApi.getList({ 
         page_size: 100,
@@ -189,8 +186,6 @@ export default function Dashboard() {
         return isInWindow(task.start_date)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
       
-      console.log('Window start tasks:', windowStartTasks.length, windowStartTasks.map(t => ({ title: t.title, start_date: t.start_date })))
-      
       windowStartTasks.forEach(task => {
         items.push({
           id: `task_start_${task.id}`,
@@ -211,8 +206,6 @@ export default function Dashboard() {
         return isInWindow(task.due_date)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
       
-      console.log('Window due tasks:', windowDueTasks.length, windowDueTasks.map(t => ({ title: t.title, due_date: t.due_date })))
-      
       windowDueTasks.forEach(task => {
         const existingIndex = items.findIndex(item => item.taskId === task.id && item.type === 'task_start')
         if (existingIndex === -1) {
@@ -232,43 +225,12 @@ export default function Dashboard() {
         }
       })
       
-      // 3. 审核提醒 - 不受时间窗口限制，只检查任务是否仍有待审核状态
+      // 3. 审核提醒 - 不受时间窗口限制，显示所有未读的审核相关通知
       const approvalNotifications = notificationsRes.data.items.filter(
         (n: Notification) => (n.notification_type === 'review' || n.notification_type === 'approval_request') && !n.is_read
       )
       
-      // 检查每个审核通知对应的任务状态
       for (const notification of approvalNotifications) {
-        // 检查任务是否仍需审核
-        if (notification.content_type === 'task') {
-          const relatedTask = tasks.find(t => t.id === notification.content_id)
-          // 如果任务不存在，或已完成/取消，或不在评审状态，则跳过
-          if (!relatedTask) {
-            // 任务可能不在我的任务列表中，尝试获取任务详情
-            try {
-              const taskRes = await tasksApi.getById(notification.content_id)
-              const taskDetail = taskRes.data as TaskDetail
-              // 检查是否有待审批信息
-              if (!taskDetail.pending_approval && 
-                  taskDetail.status !== 'task_review' && 
-                  taskDetail.status !== 'result_review') {
-                continue  // 任务已不需要审核
-              }
-            } catch {
-              continue  // 任务已删除或无权访问
-            }
-          } else {
-            // 任务在列表中，检查状态
-            if (relatedTask.status === 'done' || relatedTask.status === 'cancelled') {
-              continue
-            }
-            // 检查是否仍在评审状态
-            if (relatedTask.status !== 'task_review' && relatedTask.status !== 'result_review') {
-              continue
-            }
-          }
-        }
-        
         items.push({
           id: `approval_${notification.id}`,
           type: 'approval',
@@ -282,24 +244,12 @@ export default function Dashboard() {
         })
       }
       
-      // 4. @提及消息提醒 - 不受时间窗口限制，只检查内容是否仍存在
+      // 4. @提及消息提醒 - 不受时间窗口限制，显示所有未读的@提及通知
       const mentionNotifications = notificationsRes.data.items.filter(
         (n: Notification) => n.notification_type === 'mention' && !n.is_read
       )
       
       for (const notification of mentionNotifications) {
-        // 检查关联的任务是否仍存在
-        if (notification.content_type === 'task') {
-          const relatedTask = tasks.find(t => t.id === notification.content_id)
-          if (!relatedTask) {
-            try {
-              await tasksApi.getById(notification.content_id)
-            } catch {
-              continue  // 任务已删除
-            }
-          }
-        }
-        
         items.push({
           id: `mention_${notification.id}`,
           type: 'mention',
