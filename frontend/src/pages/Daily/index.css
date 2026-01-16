@@ -265,6 +265,37 @@
   color: var(--gray-500);
 }
 
+/* 当日总结区块 */
+.daily-summary-section {
+  background: var(--gray-50);
+  padding: var(--spacing-md);
+  border-radius: var(--radius);
+  margin-top: var(--spacing-md);
+}
+
+.daily-summary-section h4 {
+  color: var(--gray-700);
+  margin-bottom: var(--spacing-md);
+}
+
+.daily-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.summary-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gray-500);
+}
+
 /* 遇到的问题样式 */
 .log-detail-problems {
   border-left: 3px solid #F59E0B;

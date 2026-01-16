@@ -94,9 +94,9 @@ export default function Daily() {
           hours: values.hours,
           description: values.description,
           work_type: values.work_type,
+          problems: values.problems,
+          tomorrow_plan: values.tomorrow_plan,
         }],
-        problems: values.problems,
-        tomorrow_plan: values.tomorrow_plan,
       })
       message.success('日报提交成功')
       setModalOpen(false)
@@ -124,15 +124,13 @@ export default function Daily() {
   // 编辑日志
   const handleEditLog = (log: DailyWorkLog) => {
     setEditingLog(log)
-    // 找到对应日期的 summary
-    const daySummary = summaries.find(s => s.summary_date === log.work_date)
     editForm.setFieldsValue({
       task_id: log.task_id,
       hours: log.hours,
       description: log.description,
       work_type: log.work_type,
-      problems: daySummary?.problems || '',
-      tomorrow_plan: daySummary?.tomorrow_plan || '',
+      problems: log.problems || '',
+      tomorrow_plan: log.tomorrow_plan || '',
     })
     setEditModalOpen(true)
   }
@@ -148,22 +146,15 @@ export default function Daily() {
   }) => {
     if (!editingLog) return
     try {
-      // 更新工时记录
+      // 更新工时记录（包含 problems 和 tomorrow_plan）
       await dailyLogsApi.updateLog(editingLog.id, {
         task_id: values.task_id,
         hours: values.hours,
         description: values.description,
         work_type: values.work_type,
+        problems: values.problems,
+        tomorrow_plan: values.tomorrow_plan,
       })
-      
-      // 如果有问题或计划，更新 summary
-      if (values.problems || values.tomorrow_plan) {
-        await dailyLogsApi.createSummary({
-          summary_date: editingLog.work_date,
-          problems: values.problems,
-          tomorrow_plan: values.tomorrow_plan,
-        })
-      }
       
       message.success('日志已更新')
       setEditModalOpen(false)
@@ -571,21 +562,21 @@ export default function Daily() {
               </div>
 
               {/* 遇到的问题 */}
-              {daySummary?.problems && (
+              {selectedLog.problems && (
                 <div className="log-detail-section">
                   <h4>遇到的问题</h4>
                   <p className="log-detail-content log-detail-problems">
-                    {daySummary.problems}
+                    {selectedLog.problems}
                   </p>
                 </div>
               )}
 
               {/* 明日计划 */}
-              {daySummary?.tomorrow_plan && (
+              {selectedLog.tomorrow_plan && (
                 <div className="log-detail-section">
                   <h4>明日计划</h4>
                   <p className="log-detail-content log-detail-plan">
-                    {daySummary.tomorrow_plan}
+                    {selectedLog.tomorrow_plan}
                   </p>
                 </div>
               )}

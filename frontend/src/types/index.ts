@@ -158,6 +158,8 @@ export interface DailyWorkLog {
   hours: number
   description: string
   work_type: 'development' | 'design' | 'testing' | 'meeting' | 'research' | 'other'
+  problems?: string  // 遇到的问题
+  tomorrow_plan?: string  // 明日计划
   created_at: string
   updated_at: string
 }

@@ -17,6 +17,8 @@ class WorkLogBase(BaseModel):
     hours: Decimal = Field(..., gt=0, le=24, description="工时")
     description: str = Field(..., min_length=1, description="工作内容描述")
     work_type: Optional[str] = Field("development", description="工作类型")
+    problems: Optional[str] = Field(None, description="遇到的问题")
+    tomorrow_plan: Optional[str] = Field(None, description="明日计划")
 
 
 class WorkLogCreate(WorkLogBase):
@@ -30,6 +32,8 @@ class WorkLogUpdate(BaseModel):
     hours: Optional[Decimal] = Field(None, gt=0, le=24)
     description: Optional[str] = Field(None, min_length=1)
     work_type: Optional[str] = None
+    problems: Optional[str] = None
+    tomorrow_plan: Optional[str] = None
 
 
 class WorkLogInfo(WorkLogBase):

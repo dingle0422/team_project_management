@@ -224,6 +224,8 @@ export const dailyLogsApi = {
       hours: number
       description: string
       work_type?: string
+      problems?: string
+      tomorrow_plan?: string
     }>
     problems?: string
     tomorrow_plan?: string

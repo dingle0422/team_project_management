@@ -127,9 +127,9 @@ export default function Dashboard() {
           hours: values.hours,
           description: values.description,
           work_type: values.work_type,
+          problems: values.problems,
+          tomorrow_plan: values.tomorrow_plan,
         }],
-        problems: values.problems,
-        tomorrow_plan: values.tomorrow_plan,
       })
       message.success('日报提交成功')
       setDailyModalOpen(false)
@@ -155,8 +155,8 @@ export default function Dashboard() {
         hours: selectedLog.hours,
         description: selectedLog.description,
         work_type: selectedLog.work_type,
-        problems: todaySummary?.problems || '',
-        tomorrow_plan: todaySummary?.tomorrow_plan || '',
+        problems: selectedLog.problems || '',
+        tomorrow_plan: selectedLog.tomorrow_plan || '',
       })
       setEditLogModalOpen(true)
     }
@@ -173,22 +173,15 @@ export default function Dashboard() {
   }) => {
     if (!selectedLog) return
     try {
-      // 更新工时记录
+      // 更新工时记录（包含 problems 和 tomorrow_plan）
       await dailyLogsApi.updateLog(selectedLog.id, {
         task_id: values.task_id,
         hours: values.hours,
         description: values.description,
         work_type: values.work_type,
+        problems: values.problems,
+        tomorrow_plan: values.tomorrow_plan,
       })
-      
-      // 如果有问题或计划，更新 summary
-      if (values.problems || values.tomorrow_plan) {
-        await dailyLogsApi.createSummary({
-          summary_date: selectedLog.work_date,
-          problems: values.problems,
-          tomorrow_plan: values.tomorrow_plan,
-        })
-      }
       
       message.success('日志已更新')
       setEditLogModalOpen(false)
@@ -603,21 +596,21 @@ export default function Dashboard() {
             </div>
 
             {/* 遇到的问题 */}
-            {todaySummary?.problems && (
+            {selectedLog.problems && (
               <div className="log-detail-section">
                 <h4>遇到的问题</h4>
                 <p className="log-detail-content log-detail-problems">
-                  {todaySummary.problems}
+                  {selectedLog.problems}
                 </p>
               </div>
             )}
 
             {/* 明日计划 */}
-            {todaySummary?.tomorrow_plan && (
+            {selectedLog.tomorrow_plan && (
               <div className="log-detail-section">
                 <h4>明日计划</h4>
                 <p className="log-detail-content log-detail-plan">
-                  {todaySummary.tomorrow_plan}
+                  {selectedLog.tomorrow_plan}
                 </p>
               </div>
             )}

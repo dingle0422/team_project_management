@@ -71,6 +71,8 @@ def convert_worklog_to_info(log: DailyWorkLog) -> WorkLogInfo:
         hours=log.hours,
         description=log.description,
         work_type=log.work_type,
+        problems=log.problems,
+        tomorrow_plan=log.tomorrow_plan,
         created_at=log.created_at,
     )
 
@@ -161,6 +163,8 @@ def create_work_log(
         hours=log_in.hours,
         description=log_in.description,
         work_type=log_in.work_type,
+        problems=log_in.problems,
+        tomorrow_plan=log_in.tomorrow_plan,
     )
     db.add(log)
     
@@ -511,6 +515,8 @@ def submit_quick_daily_report(
             hours=log_data.hours,
             description=log_data.description,
             work_type=log_data.work_type,
+            problems=log_data.problems,
+            tomorrow_plan=log_data.tomorrow_plan,
         )
         db.add(log)
         
@@ -519,7 +525,7 @@ def submit_quick_daily_report(
         
         logs.append(log)
     
-    # 创建或更新总结
+    # 创建或更新总结（兼容旧版本）
     summary = None
     if report_in.problems or report_in.tomorrow_plan or report_in.notes:
         existing_summary = db.query(DailySummary).filter(
