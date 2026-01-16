@@ -17,9 +17,36 @@
   overflow-y: auto;
 }
 
+/* 近期事项 section header */
+.section-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 时间窗口选择器 */
+.time-window-selector {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 0;
+  margin-bottom: 8px;
+  background: var(--gray-50);
+  border-radius: var(--radius);
+}
+
+.time-window-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--gray-700);
+  min-width: 120px;
+  text-align: center;
+}
+
 /* 近期事项列表 */
 .recent-items-list {
-  max-height: 500px;
+  max-height: 450px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
@@ -27,6 +54,8 @@
 }
 
 .recent-item {
+  display: flex;
+  align-items: flex-start;
   padding: var(--spacing-md);
   background: var(--gray-50);
   border-radius: var(--radius);
@@ -39,6 +68,16 @@
   background: var(--gray-100);
   border-color: var(--gray-200);
   transform: translateX(4px);
+}
+
+.recent-item.selected {
+  background: #EFF6FF;
+  border-color: #3B82F6;
+}
+
+.recent-item-main {
+  flex: 1;
+  min-width: 0;
 }
 
 .recent-item-header {

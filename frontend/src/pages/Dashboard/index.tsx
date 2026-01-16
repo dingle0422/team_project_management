@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar } from 'antd'
-import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
+import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar, Checkbox } from 'antd'
+import { PlusOutlined, EditOutlined, CalendarOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 import { tasksApi, dailyLogsApi, meetingsApi, notificationsApi } from '@/services/api'
-import type { Task, DailyWorkLog, Meeting, DailySummary, Notification } from '@/types'
+import type { Task, DailyWorkLog, Meeting, DailySummary, Notification, TaskDetail } from '@/types'
 import './index.css'
 
 // 扩展 dayjs 以支持 ISO 周
@@ -27,6 +27,7 @@ interface RecentItem {
   link?: string
   priority?: string
   projectName?: string
+  isValid?: boolean  // 是否有效（任务是否还存在/待处理）
 }
 
 const { TextArea } = Input
@@ -69,6 +70,10 @@ export default function Dashboard() {
   
   // 近期事项状态
   const [recentItems, setRecentItems] = useState<RecentItem[]>([])
+  const [weekOffset, setWeekOffset] = useState(0)  // 0 表示当前周（前后各1周），正数表示未来，负数表示过去
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())  // 选中的事项ID
+  const [batchMode, setBatchMode] = useState(false)  // 批量处理模式
+  const [allMyTasks, setAllMyTasks] = useState<Task[]>([])  // 所有任务缓存
   
   // 弹窗状态
   const [dailyModalOpen, setDailyModalOpen] = useState(false)
@@ -76,13 +81,22 @@ export default function Dashboard() {
   const [meetingDetailModalOpen, setMeetingDetailModalOpen] = useState(false)
   const [logDetailModalOpen, setLogDetailModalOpen] = useState(false)
   const [editLogModalOpen, setEditLogModalOpen] = useState(false)
+  const [editMeetingModalOpen, setEditMeetingModalOpen] = useState(false)
   const [dailyForm] = Form.useForm()
   const [meetingForm] = Form.useForm()
   const [editLogForm] = Form.useForm()
+  const [editMeetingForm] = Form.useForm()
 
   useEffect(() => {
     loadData()
   }, [])
+
+  // 当周偏移量变化时重新加载近期事项
+  useEffect(() => {
+    if (!loading && allMyTasks.length > 0) {
+      loadRecentItems()
+    }
+  }, [weekOffset])
 
   const loadData = async () => {
     setLoading(true)
@@ -93,11 +107,11 @@ export default function Dashboard() {
       const today = dayjs().format('YYYY-MM-DD')
       const currentUserId = useAuthStore.getState().user?.id
       
-      // 获取本周的开始和结束日期
+      // 获取本周的开始和结束日期（用于统计）
       const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD')
       const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD')
       
-      const [logsRes, summariesRes, meetingsRes, statsRes, notificationsRes] = await Promise.all([
+      const [logsRes, summariesRes, meetingsRes, statsRes, tasksRes] = await Promise.all([
         dailyLogsApi.getLogs({ 
           start_date: today, 
           end_date: today,
@@ -113,33 +127,60 @@ export default function Dashboard() {
           start_date: weekStart, 
           end_date: weekEnd 
         }),
-        // 获取通知（审核提醒和@提及）
-        notificationsApi.getList({ 
-          page_size: 50,
-          unread_only: false 
-        }),
+        // 获取所有我的任务
+        tasksApi.getMyTasks({ page_size: 200 }),
       ])
       
       setTodayLogs(logsRes.data.items)
       setTodaySummary(summariesRes.data.items?.[0] || null)
       setRecentMeetings(meetingsRes.data.items)
       
-      // 处理近期事项
+      const tasksData = tasksRes.data.items || []
+      setAllMyTasks(tasksData)
+      
+      setStats({
+        todayTasks: tasksData.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
+        weekHours: statsRes.data.total_hours || 0,
+        weekCompleted: tasksData.filter(t => t.status === 'done').length,
+        activeProjects: projects.filter(p => p.status === 'active').length,
+      })
+      
+      // 加载近期事项
+      await loadRecentItems(tasksData)
+    } catch (error) {
+      console.error('Failed to load dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // 加载近期事项（分离出来以便周切换时调用）
+  const loadRecentItems = async (tasksData?: Task[]) => {
+    try {
+      const tasks = tasksData || allMyTasks
+      
+      // 计算时间窗口：以当前日期为中心，前后各1周（共2周）
+      // weekOffset 控制这个窗口的偏移
+      const centerDate = dayjs().add(weekOffset, 'week')
+      const windowStart = centerDate.subtract(1, 'week').startOf('day')
+      const windowEnd = centerDate.add(1, 'week').endOf('day')
+      
+      // 获取通知
+      const notificationsRes = await notificationsApi.getList({ 
+        page_size: 100,
+        unread_only: false 
+      })
+      
       const items: RecentItem[] = []
       
-      // 获取最新的 myTasks
-      const tasksRes = await tasksApi.getMyTasks({ page_size: 100 })
-      const allMyTasks = tasksRes.data.items || []
-      
-      // 1. 本周开始的任务（待完成标签）
-      const weekStartTasks = allMyTasks.filter(task => {
+      // 1. 时间窗口内开始的任务（待完成标签）
+      const windowStartTasks = tasks.filter(task => {
         if (!task.start_date) return false
         const startDate = dayjs(task.start_date)
-        return startDate.isSame(weekStart, 'day') || 
-               (startDate.isAfter(dayjs(weekStart)) && startDate.isBefore(dayjs(weekEnd).add(1, 'day')))
+        return startDate.isAfter(windowStart) && startDate.isBefore(windowEnd)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
       
-      weekStartTasks.forEach(task => {
+      windowStartTasks.forEach(task => {
         items.push({
           id: `task_start_${task.id}`,
           type: 'task_start',
@@ -149,19 +190,18 @@ export default function Dashboard() {
           taskId: task.id,
           priority: task.priority,
           projectName: task.project?.name,
+          isValid: true,
         })
       })
       
-      // 2. 本周到期的任务（到期预警标签）
-      const weekDueTasks = allMyTasks.filter(task => {
+      // 2. 时间窗口内到期的任务（到期预警标签）
+      const windowDueTasks = tasks.filter(task => {
         if (!task.due_date) return false
         const dueDate = dayjs(task.due_date)
-        return dueDate.isSame(weekStart, 'day') || 
-               (dueDate.isAfter(dayjs(weekStart)) && dueDate.isBefore(dayjs(weekEnd).add(1, 'day')))
+        return dueDate.isAfter(windowStart) && dueDate.isBefore(windowEnd)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
       
-      weekDueTasks.forEach(task => {
-        // 避免重复添加（如果同时在本周开始和到期）
+      windowDueTasks.forEach(task => {
         const existingIndex = items.findIndex(item => item.taskId === task.id && item.type === 'task_start')
         if (existingIndex === -1) {
           items.push({
@@ -173,19 +213,56 @@ export default function Dashboard() {
             taskId: task.id,
             priority: task.priority,
             projectName: task.project?.name,
+            isValid: true,
           })
         } else {
-          // 如果已存在，标记为同时开始和到期
-          items[existingIndex].type = 'task_due' // 优先显示到期预警
+          items[existingIndex].type = 'task_due'
         }
       })
       
-      // 3. 审核提醒（用户作为审核人需要审核的任务）
+      // 3. 审核提醒 - 需要检查任务是否仍有待审核状态
       const approvalNotifications = notificationsRes.data.items.filter(
         (n: Notification) => (n.notification_type === 'review' || n.notification_type === 'approval_request') && !n.is_read
       )
       
-      approvalNotifications.forEach((notification: Notification) => {
+      // 检查每个审核通知对应的任务状态
+      for (const notification of approvalNotifications) {
+        // 检查通知时间是否在时间窗口内
+        const notifDate = dayjs(notification.created_at)
+        if (!notifDate.isAfter(windowStart) || !notifDate.isBefore(windowEnd)) {
+          continue
+        }
+        
+        // 检查任务是否仍需审核
+        if (notification.content_type === 'task') {
+          const relatedTask = tasks.find(t => t.id === notification.content_id)
+          // 如果任务不存在，或已完成/取消，或不在评审状态，则跳过
+          if (!relatedTask) {
+            // 任务可能不在我的任务列表中，尝试获取任务详情
+            try {
+              const taskRes = await tasksApi.getById(notification.content_id)
+              const taskDetail = taskRes.data as TaskDetail
+              // 检查是否有待审批信息
+              if (!taskDetail.pending_approval && 
+                  taskDetail.status !== 'task_review' && 
+                  taskDetail.status !== 'result_review') {
+                continue  // 任务已不需要审核
+              }
+            } catch {
+              continue  // 任务已删除或无权访问
+            }
+          } else {
+            // 任务在列表中，检查状态
+            if (relatedTask.status === 'done' || relatedTask.status === 'cancelled') {
+              continue
+            }
+            // 检查是否仍在评审状态
+            if (relatedTask.status !== 'task_review' && relatedTask.status !== 'result_review') {
+              continue
+            }
+          }
+        }
+        
         items.push({
           id: `approval_${notification.id}`,
           type: 'approval',
@@ -195,15 +272,34 @@ export default function Dashboard() {
           notificationId: notification.id,
           taskId: notification.content_type === 'task' ? notification.content_id : undefined,
           link: notification.link,
+          isValid: true,
         })
-      })
+      }
       
-      // 4. @提及消息提醒
+      // 4. @提及消息提醒 - 检查内容是否仍存在
       const mentionNotifications = notificationsRes.data.items.filter(
         (n: Notification) => n.notification_type === 'mention' && !n.is_read
       )
       
-      mentionNotifications.forEach((notification: Notification) => {
+      for (const notification of mentionNotifications) {
+        // 检查通知时间是否在时间窗口内
+        const notifDate = dayjs(notification.created_at)
+        if (!notifDate.isAfter(windowStart) || !notifDate.isBefore(windowEnd)) {
+          continue
+        }
+        
+        // 检查关联的任务是否仍存在
+        if (notification.content_type === 'task') {
+          const relatedTask = tasks.find(t => t.id === notification.content_id)
+          if (!relatedTask) {
+            try {
+              await tasksApi.getById(notification.content_id)
+            } catch {
+              continue  // 任务已删除
+            }
+          }
+        }
+        
         items.push({
           id: `mention_${notification.id}`,
           type: 'mention',
@@ -213,8 +309,9 @@ export default function Dashboard() {
           notificationId: notification.id,
           taskId: notification.content_type === 'task' ? notification.content_id : undefined,
           link: notification.link,
+          isValid: true,
         })
-      })
+      }
       
       // 按时间排序（最近的在前）
       items.sort((a, b) => {
@@ -224,18 +321,63 @@ export default function Dashboard() {
       })
       
       setRecentItems(items)
-      
-      setStats({
-        todayTasks: allMyTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
-        weekHours: statsRes.data.total_hours || 0,
-        weekCompleted: allMyTasks.filter(t => t.status === 'done').length,
-        activeProjects: projects.filter(p => p.status === 'active').length,
-      })
+      setSelectedItems(new Set())  // 清空选择
     } catch (error) {
-      console.error('Failed to load dashboard data:', error)
-    } finally {
-      setLoading(false)
+      console.error('Failed to load recent items:', error)
     }
+  }
+
+  // 获取时间窗口的显示文本
+  const getTimeWindowText = () => {
+    const centerDate = dayjs().add(weekOffset, 'week')
+    const windowStart = centerDate.subtract(1, 'week')
+    const windowEnd = centerDate.add(1, 'week')
+    return `${windowStart.format('M月D日')} - ${windowEnd.format('M月D日')}`
+  }
+
+  // 批量标记已处理
+  const handleBatchMarkAsRead = async () => {
+    const notificationIds = Array.from(selectedItems)
+      .map(id => {
+        const item = recentItems.find(i => i.id === id)
+        return item?.notificationId
+      })
+      .filter((id): id is number => id !== undefined)
+    
+    if (notificationIds.length === 0) {
+      message.warning('请选择包含通知的事项')
+      return
+    }
+    
+    try {
+      await notificationsApi.markBatchAsRead(notificationIds)
+      message.success(`已标记 ${notificationIds.length} 条通知为已读`)
+      setBatchMode(false)
+      setSelectedItems(new Set())
+      loadRecentItems()
+    } catch {
+      message.error('操作失败')
+    }
+  }
+
+  // 全选/取消全选
+  const handleSelectAll = () => {
+    if (selectedItems.size === recentItems.length) {
+      setSelectedItems(new Set())
+    } else {
+      setSelectedItems(new Set(recentItems.map(item => item.id)))
+    }
+  }
+
+  // 切换单个选择
+  const toggleItemSelection = (itemId: string) => {
+    const newSelected = new Set(selectedItems)
+    if (newSelected.has(itemId)) {
+      newSelected.delete(itemId)
+    } else {
+      newSelected.add(itemId)
+    }
+    setSelectedItems(newSelected)
   }
 
   // 过滤掉已取消的任务（用于日报选择）
@@ -374,6 +516,73 @@ export default function Dashboard() {
     }
   }
 
+  // 判断是否可以编辑/删除会议纪要（创建人或管理员）
+  const canEditOrDeleteMeeting = (meeting: Meeting | null) => {
+    if (!meeting || !user) return false
+    const creatorId = meeting.created_by?.id || meeting.creator?.id
+    return user.role === 'admin' || creatorId === user.id
+  }
+
+  // 打开编辑会议弹窗
+  const openEditMeetingModal = () => {
+    if (selectedMeeting) {
+      editMeetingForm.setFieldsValue({
+        project_id: selectedMeeting.project_id,
+        title: selectedMeeting.title,
+        meeting_date: dayjs(selectedMeeting.meeting_date),
+        location: selectedMeeting.location,
+        summary: selectedMeeting.summary,
+        content: selectedMeeting.content,
+      })
+      setMeetingDetailModalOpen(false)
+      setEditMeetingModalOpen(true)
+    }
+  }
+
+  // 更新会议纪要
+  const handleUpdateMeeting = async (values: {
+    project_id: number
+    title: string
+    meeting_date: dayjs.Dayjs
+    location?: string
+    summary?: string
+    content?: string
+  }) => {
+    if (!selectedMeeting) return
+    try {
+      await meetingsApi.update(selectedMeeting.id, {
+        ...values,
+        meeting_date: values.meeting_date.format('YYYY-MM-DD'),
+      })
+      message.success('会议纪要更新成功')
+      setEditMeetingModalOpen(false)
+      editMeetingForm.resetFields()
+      setSelectedMeeting(null)
+      // 刷新会议列表
+      const meetingsRes = await meetingsApi.getList({ page_size: 5 })
+      setRecentMeetings(meetingsRes.data.items)
+    } catch {
+      message.error('更新失败')
+    }
+  }
+
+  // 删除会议纪要
+  const handleDeleteMeeting = async () => {
+    if (!selectedMeeting) return
+    try {
+      await meetingsApi.delete(selectedMeeting.id)
+      message.success('会议纪要已删除')
+      setMeetingDetailModalOpen(false)
+      setSelectedMeeting(null)
+      // 刷新会议列表
+      const meetingsRes = await meetingsApi.getList({ page_size: 5 })
+      setRecentMeetings(meetingsRes.data.items)
+    } catch (error: unknown) {
+      const err = error as Error
+      message.error(err.message || '删除失败')
+    }
+  }
+
   // 获取优先级样式
   const getPriorityClass = (priority: string) => {
     const map: Record<string, string> = {
@@ -495,62 +704,130 @@ export default function Dashboard() {
         <div className="dashboard-section">
           <div className="section-header">
             <h2>📋 近期事项</h2>
-            <Link to="/tasks" className="link-btn">查看全部 →</Link>
+            <div className="section-header-actions">
+              {batchMode ? (
+                <>
+                  <Button size="small" onClick={handleSelectAll}>
+                    {selectedItems.size === recentItems.length ? '取消全选' : '全选'}
+                  </Button>
+                  <Button 
+                    size="small" 
+                    type="primary"
+                    disabled={selectedItems.size === 0}
+                    onClick={handleBatchMarkAsRead}
+                  >
+                    标记已处理 ({selectedItems.size})
+                  </Button>
+                  <Button size="small" onClick={() => { setBatchMode(false); setSelectedItems(new Set()) }}>
+                    取消
+                  </Button>
+                </>
+              ) : (
+                <Button size="small" onClick={() => setBatchMode(true)}>
+                  批量处理
+                </Button>
+              )}
+            </div>
           </div>
+          
+          {/* 时间窗口选择器 */}
+          <div className="time-window-selector">
+            <Button 
+              type="text" 
+              icon={<LeftOutlined />} 
+              onClick={() => setWeekOffset(weekOffset - 1)}
+              size="small"
+            />
+            <span className="time-window-text">
+              {weekOffset === 0 ? '近两周' : getTimeWindowText()}
+            </span>
+            <Button 
+              type="text" 
+              icon={<RightOutlined />} 
+              onClick={() => setWeekOffset(weekOffset + 1)}
+              size="small"
+            />
+            {weekOffset !== 0 && (
+              <Button 
+                type="link" 
+                size="small"
+                onClick={() => setWeekOffset(0)}
+              >
+                回到当前
+              </Button>
+            )}
+          </div>
+          
           <div className="recent-items-list">
             {recentItems.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🎉</div>
-                <div className="empty-state-text">暂无近期事项</div>
+                <div className="empty-state-text">该时间段暂无事项</div>
               </div>
             ) : (
-              recentItems.slice(0, 8).map(item => {
+              recentItems.map(item => {
                 const tagConfig = getRecentItemTag(item.type)
                 return (
                   <div 
                     key={item.id} 
-                    className="recent-item clickable"
-                    onClick={() => handleRecentItemClick(item)}
+                    className={`recent-item clickable ${selectedItems.has(item.id) ? 'selected' : ''}`}
+                    onClick={() => {
+                      if (batchMode) {
+                        toggleItemSelection(item.id)
+                      } else {
+                        handleRecentItemClick(item)
+                      }
+                    }}
                   >
-                    <div className="recent-item-header">
-                      <Tag 
-                        className="recent-item-tag"
-                        style={{ 
-                          color: tagConfig.color, 
-                          background: tagConfig.bg,
-                          border: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                        }}
-                      >
-                        {tagConfig.icon}
-                        {tagConfig.label}
-                      </Tag>
-                      {item.date && (
-                        <span className="recent-item-date">
-                          {formatRelativeDate(item.date)}
-                        </span>
-                      )}
-                    </div>
-                    <div className="recent-item-content">
-                      <div className="recent-item-title">{item.title}</div>
-                      {item.subtitle && (
-                        <div className="recent-item-subtitle">{item.subtitle}</div>
-                      )}
-                    </div>
-                    {item.priority && (
-                      <div className="recent-item-footer">
-                        <span className={`priority-badge ${getPriorityClass(item.priority)}`}>
-                          {item.priority === 'urgent' ? '紧急' : 
-                           item.priority === 'high' ? '高' : 
-                           item.priority === 'medium' ? '中' : '低'}
-                        </span>
-                        {item.projectName && (
-                          <span className="recent-item-project">{item.projectName}</span>
+                    {batchMode && (
+                      <Checkbox 
+                        checked={selectedItems.has(item.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => toggleItemSelection(item.id)}
+                        style={{ marginRight: 8 }}
+                      />
+                    )}
+                    <div className="recent-item-main">
+                      <div className="recent-item-header">
+                        <Tag 
+                          className="recent-item-tag"
+                          style={{ 
+                            color: tagConfig.color, 
+                            background: tagConfig.bg,
+                            border: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          {tagConfig.icon}
+                          {tagConfig.label}
+                        </Tag>
+                        {item.date && (
+                          <span className="recent-item-date">
+                            {formatRelativeDate(item.date)}
+                          </span>
                         )}
                       </div>
-                    )}
+                      <div className="recent-item-content">
+                        <div className="recent-item-title">{item.title}</div>
+                        {item.subtitle && (
+                          <div className="recent-item-subtitle">{item.subtitle}</div>
+                        )}
+                      </div>
+                      {item.priority && (
+                        <div className="recent-item-footer">
+                          <span className={`priority-badge ${getPriorityClass(item.priority)}`}>
+                            {item.priority === 'urgent' ? '紧急' : 
+                             item.priority === 'high' ? '高' : 
+                             item.priority === 'medium' ? '中' : '低'}
+                          </span>
+                          {item.projectName && (
+                            <span className="recent-item-project">{item.projectName}</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )
               })
@@ -952,7 +1229,7 @@ export default function Dashboard() {
 
       {/* 会议详情弹窗 */}
       <Modal
-        title={selectedMeeting?.title}
+        title={null}
         open={meetingDetailModalOpen}
         onCancel={() => setMeetingDetailModalOpen(false)}
         footer={null}
@@ -960,6 +1237,27 @@ export default function Dashboard() {
       >
         {selectedMeeting && (
           <div>
+            {/* 头部操作栏 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{selectedMeeting.title}</h3>
+              {canEditOrDeleteMeeting(selectedMeeting) && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button icon={<EditOutlined />} onClick={openEditMeetingModal}>
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确认删除"
+                    description="确定要删除这个会议纪要吗？此操作不可撤销。"
+                    onConfirm={handleDeleteMeeting}
+                    okText="确认"
+                    cancelText="取消"
+                  >
+                    <Button danger icon={<DeleteOutlined />}>删除</Button>
+                  </Popconfirm>
+                </div>
+              )}
+            </div>
+            
             <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14, flexWrap: 'wrap' }}>
               <span><CalendarOutlined /> 会议日期: {selectedMeeting.meeting_date}</span>
               {selectedMeeting.location && <span>📍 地点: {selectedMeeting.location}</span>}
@@ -1004,6 +1302,71 @@ export default function Dashboard() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* 编辑会议纪要弹窗 */}
+      <Modal
+        title="编辑会议纪要"
+        open={editMeetingModalOpen}
+        onCancel={() => { setEditMeetingModalOpen(false); editMeetingForm.resetFields(); }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={editMeetingForm}
+          layout="vertical"
+          onFinish={handleUpdateMeeting}
+        >
+          <Form.Item
+            name="project_id"
+            label="所属项目"
+            rules={[{ required: true, message: '请选择项目' }]}
+          >
+            <Select placeholder="选择项目">
+              {projects.map(project => (
+                <Select.Option key={project.id} value={project.id}>
+                  [{project.code}] {project.name}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="title"
+            label="会议标题"
+            rules={[{ required: true, message: '请输入会议标题' }]}
+          >
+            <Input placeholder="例如：需求评审会议" />
+          </Form.Item>
+          <Form.Item
+            name="meeting_date"
+            label="会议日期"
+            rules={[{ required: true, message: '请选择日期' }]}
+          >
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="location"
+            label="会议地点"
+          >
+            <Input placeholder="会议室/线上会议链接" />
+          </Form.Item>
+          <Form.Item
+            name="summary"
+            label="会议摘要"
+          >
+            <TextArea rows={3} placeholder="会议主要讨论内容概要..." />
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label="会议内容"
+          >
+            <TextArea rows={6} placeholder="会议详细内容、决议、待办事项..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Button onClick={() => { setEditMeetingModalOpen(false); editMeetingForm.resetFields(); }}>取消</Button>
+            <Button type="primary" htmlType="submit">保存</Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   )

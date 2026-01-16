@@ -41,9 +41,11 @@ export default function Projects() {
   const [projectMeetings, setProjectMeetings] = useState<Meeting[]>([])
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
   const [meetingsLoading, setMeetingsLoading] = useState(false)
+  const [editMeetingModalOpen, setEditMeetingModalOpen] = useState(false)
   
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
+  const [editMeetingForm] = Form.useForm()
   const [statusFilter, setStatusFilter] = useState<string | undefined>()
 
   useEffect(() => {
@@ -167,6 +169,75 @@ export default function Projects() {
       setMeetingDetailModalOpen(true)
     } catch {
       message.error('获取会议详情失败')
+    }
+  }
+
+  // 判断是否可以编辑/删除会议纪要（创建人或管理员）
+  const canEditOrDeleteMeeting = (meeting: Meeting | null) => {
+    if (!meeting || !user) return false
+    const creatorId = meeting.created_by?.id || meeting.creator?.id
+    return user.role === 'admin' || creatorId === user.id
+  }
+
+  // 打开编辑会议弹窗
+  const openEditMeetingModal = () => {
+    if (selectedMeeting) {
+      editMeetingForm.setFieldsValue({
+        title: selectedMeeting.title,
+        meeting_date: dayjs(selectedMeeting.meeting_date),
+        location: selectedMeeting.location,
+        summary: selectedMeeting.summary,
+        content: selectedMeeting.content,
+      })
+      setMeetingDetailModalOpen(false)
+      setEditMeetingModalOpen(true)
+    }
+  }
+
+  // 更新会议纪要
+  const handleUpdateMeeting = async (values: {
+    title: string
+    meeting_date: dayjs.Dayjs
+    location?: string
+    summary?: string
+    content?: string
+  }) => {
+    if (!selectedMeeting) return
+    try {
+      await meetingsApi.update(selectedMeeting.id, {
+        ...values,
+        meeting_date: values.meeting_date.format('YYYY-MM-DD'),
+      })
+      message.success('会议纪要更新成功')
+      setEditMeetingModalOpen(false)
+      editMeetingForm.resetFields()
+      setSelectedMeeting(null)
+      // 刷新会议列表
+      if (selectedProject) {
+        const res = await meetingsApi.getList({ project_id: selectedProject.id })
+        setProjectMeetings(res.data.items)
+      }
+    } catch {
+      message.error('更新失败')
+    }
+  }
+
+  // 删除会议纪要
+  const handleDeleteMeeting = async () => {
+    if (!selectedMeeting) return
+    try {
+      await meetingsApi.delete(selectedMeeting.id)
+      message.success('会议纪要已删除')
+      setMeetingDetailModalOpen(false)
+      setSelectedMeeting(null)
+      // 刷新会议列表
+      if (selectedProject) {
+        const res = await meetingsApi.getList({ project_id: selectedProject.id })
+        setProjectMeetings(res.data.items)
+      }
+    } catch (error: unknown) {
+      const err = error as Error
+      message.error(err.message || '删除失败')
     }
   }
 
@@ -526,7 +597,7 @@ export default function Projects() {
 
       {/* 会议详情弹窗 */}
       <Modal
-        title={selectedMeeting?.title}
+        title={null}
         open={meetingDetailModalOpen}
         onCancel={() => setMeetingDetailModalOpen(false)}
         footer={null}
@@ -534,7 +605,28 @@ export default function Projects() {
       >
         {selectedMeeting && (
           <div>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14 }}>
+            {/* 头部操作栏 */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>{selectedMeeting.title}</h3>
+              {canEditOrDeleteMeeting(selectedMeeting) && (
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <Button icon={<EditOutlined />} onClick={openEditMeetingModal}>
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确认删除"
+                    description="确定要删除这个会议纪要吗？此操作不可撤销。"
+                    onConfirm={handleDeleteMeeting}
+                    okText="确认"
+                    cancelText="取消"
+                  >
+                    <Button danger icon={<DeleteOutlined />}>删除</Button>
+                  </Popconfirm>
+                </div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', gap: 16, marginBottom: 16, color: '#6B7280', fontSize: 14, flexWrap: 'wrap' }}>
               <span><CalendarOutlined /> 会议日期: {selectedMeeting.meeting_date}</span>
               {selectedMeeting.location && <span>📍 地点: {selectedMeeting.location}</span>}
               {selectedMeeting.creator && <span><TeamOutlined /> 创建人: {selectedMeeting.creator.name}</span>}
@@ -570,6 +662,58 @@ export default function Projects() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* 编辑会议纪要弹窗 */}
+      <Modal
+        title="编辑会议纪要"
+        open={editMeetingModalOpen}
+        onCancel={() => { setEditMeetingModalOpen(false); editMeetingForm.resetFields(); }}
+        footer={null}
+        width={600}
+      >
+        <Form
+          form={editMeetingForm}
+          layout="vertical"
+          onFinish={handleUpdateMeeting}
+        >
+          <Form.Item
+            name="title"
+            label="会议标题"
+            rules={[{ required: true, message: '请输入会议标题' }]}
+          >
+            <Input placeholder="例如：需求评审会议" />
+          </Form.Item>
+          <Form.Item
+            name="meeting_date"
+            label="会议日期"
+            rules={[{ required: true, message: '请选择日期' }]}
+          >
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+          <Form.Item
+            name="location"
+            label="会议地点"
+          >
+            <Input placeholder="会议室/线上会议链接" />
+          </Form.Item>
+          <Form.Item
+            name="summary"
+            label="会议摘要"
+          >
+            <TextArea rows={3} placeholder="会议主要讨论内容概要..." />
+          </Form.Item>
+          <Form.Item
+            name="content"
+            label="会议内容"
+          >
+            <TextArea rows={6} placeholder="会议详细内容、决议、待办事项..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Button onClick={() => { setEditMeetingModalOpen(false); editMeetingForm.resetFields(); }}>取消</Button>
+            <Button type="primary" htmlType="submit">保存</Button>
+          </div>
+        </Form>
       </Modal>
     </div>
   )
