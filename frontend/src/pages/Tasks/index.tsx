@@ -73,6 +73,7 @@ export default function Tasks() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [approving, setApproving] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
 
@@ -146,11 +147,18 @@ export default function Tasks() {
   // 更新任务状态
   const handleStatusChange = async (taskId: number, newStatus: TaskStatus) => {
     try {
-      await tasksApi.updateStatus(taskId, { new_status: newStatus })
-      message.success('状态已更新')
+      const res = await tasksApi.updateStatus(taskId, { new_status: newStatus })
+      message.success(res.message || '状态已更新')
       fetchTasks({ project_id: selectedProject })
+      // 实时刷新任务详情以获取待审批信息
       if (selectedTask?.id === taskId) {
-        setSelectedTask({ ...selectedTask, status: newStatus })
+        try {
+          const detailRes = await tasksApi.getById(taskId)
+          setSelectedTask(detailRes.data as TaskDetail)
+        } catch {
+          // 如果获取详情失败，至少更新本地状态
+          setSelectedTask({ ...selectedTask, status: newStatus })
+        }
       }
     } catch {
       message.error('更新失败')
@@ -191,6 +199,30 @@ export default function Tasks() {
     } finally {
       setApproving(false)
     }
+  }
+
+  // 取消审批申请
+  const handleCancelApproval = async () => {
+    if (!selectedTask) return
+    setCancelling(true)
+    try {
+      const res = await tasksApi.cancelApproval(selectedTask.id)
+      message.success(res.message || '申请已取消')
+      fetchTasks({ project_id: selectedProject })
+      // 刷新任务详情
+      const detailRes = await tasksApi.getById(selectedTask.id)
+      setSelectedTask(detailRes.data as TaskDetail)
+    } catch {
+      message.error('取消失败')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  // 判断当前用户是否为待审批的申请人
+  const isApprovalRequester = () => {
+    if (!selectedTask?.pending_approval || !user) return false
+    return selectedTask.pending_approval.requester?.id === user.id
   }
 
   // 开始编辑任务
@@ -530,21 +562,24 @@ export default function Tasks() {
                   </Tag>
                   <div style={{ display: 'flex', gap: 8 }}>
                     {canChangeStatus() ? (
-                      <Select
-                        value={selectedTask.status}
-                        onChange={(v) => handleStatusChange(selectedTask.id, v)}
-                        style={{ width: 120 }}
-                      >
-                        {KANBAN_COLUMNS.map(s => (
-                          <Select.Option 
-                            key={s} 
-                            value={s}
-                            disabled={!canTransitionTo(selectedTask.status, s)}
-                          >
-                            {STATUS_CONFIG[s].label}
-                          </Select.Option>
-                        ))}
-                      </Select>
+                      <Tooltip title={selectedTask.pending_approval ? '有待审批的状态变更，请等待审批完成或取消申请' : ''}>
+                        <Select
+                          value={selectedTask.status}
+                          onChange={(v) => handleStatusChange(selectedTask.id, v)}
+                          style={{ width: 120 }}
+                          disabled={!!selectedTask.pending_approval}
+                        >
+                          {KANBAN_COLUMNS.map(s => (
+                            <Select.Option 
+                              key={s} 
+                              value={s}
+                              disabled={!canTransitionTo(selectedTask.status, s)}
+                            >
+                              {STATUS_CONFIG[s].label}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Tooltip>
                     ) : (
                       <Tag style={{ 
                         background: STATUS_CONFIG[selectedTask.status]?.bg, 
@@ -640,10 +675,30 @@ export default function Tasks() {
                 {/* 待审批信息 */}
                 {selectedTask.pending_approval && (
                   <div className="task-detail-approval" style={{ marginTop: 20, padding: 16, background: '#FEF3C7', borderRadius: 8 }}>
-                    <h4 style={{ margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <LoadingOutlined style={{ color: '#D97706' }} />
-                      等待审批
-                    </h4>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
+                      <h4 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <LoadingOutlined style={{ color: '#D97706' }} />
+                        等待审批
+                      </h4>
+                      {/* 申请人可以取消申请 */}
+                      {isApprovalRequester() && (
+                        <Popconfirm
+                          title="确认取消"
+                          description="确定要取消此状态变更申请吗？"
+                          onConfirm={handleCancelApproval}
+                          okText="确认"
+                          cancelText="取消"
+                        >
+                          <Button 
+                            size="small" 
+                            danger
+                            loading={cancelling}
+                          >
+                            取消申请
+                          </Button>
+                        </Popconfirm>
+                      )}
+                    </div>
                     <p style={{ margin: '0 0 12px', color: '#92400E' }}>
                       {selectedTask.pending_approval.requester?.name} 请求将状态从 
                       「{STATUS_CONFIG[selectedTask.pending_approval.from_status as TaskStatus]?.label || selectedTask.pending_approval.from_status}」

@@ -158,6 +158,10 @@ export const tasksApi = {
   approveStatusChange: (taskId: number, data: { action: 'approve' | 'reject'; comment?: string }): Promise<ApiResponse<Task>> =>
     api.post(`/tasks/${taskId}/approve`, data),
   
+  // 取消状态变更申请
+  cancelApproval: (taskId: number): Promise<ApiResponse<Task>> =>
+    api.post(`/tasks/${taskId}/cancel-approval`),
+  
   // 干系人
   addStakeholder: (taskId: number, data: { member_id: number; role: string }): Promise<ApiResponse<null>> =>
     api.post(`/tasks/${taskId}/stakeholders`, data),

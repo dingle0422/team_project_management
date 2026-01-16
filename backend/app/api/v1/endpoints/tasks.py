@@ -831,6 +831,97 @@ def change_task_status(
     return Response(data=convert_task_to_info(db, task))
 
 
+@router.post("/{task_id}/cancel-approval", response_model=Response[TaskInfo])
+def cancel_approval_request(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Member = Depends(get_current_user),
+    task_id: int,
+):
+    """
+    取消待审批的状态变更请求（仅申请人可操作）
+    """
+    task = db.query(Task).filter(Task.id == task_id).first()
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Task not found"
+        )
+    
+    # 查找待审批的状态变更记录
+    pending_change = db.query(TaskStatusHistory).filter(
+        TaskStatusHistory.task_id == task_id,
+        TaskStatusHistory.review_result == "pending"
+    ).first()
+    
+    if not pending_change:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="没有找到待审批的状态变更请求"
+        )
+    
+    # 权限检查：只有申请人（状态变更的发起人）可以取消
+    if pending_change.changed_by != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="只有申请人可以取消此状态变更请求"
+        )
+    
+    # 标记状态变更为已取消
+    pending_change.review_result = "cancelled"
+    
+    # 删除相关的审批记录
+    db.query(TaskStatusApproval).filter(
+        TaskStatusApproval.status_change_id == pending_change.id
+    ).delete()
+    
+    # 通知所有干系人申请已取消
+    stakeholder_ids = [s.member_id for s in db.query(TaskStakeholder).filter(
+        TaskStakeholder.task_id == task_id
+    ).all()]
+    
+    if stakeholder_ids:
+        notification_service.create_notification(
+            db=db,
+            recipient_id=stakeholder_ids[0],  # 先通知第一个
+            sender_id=current_user.id,
+            notification_type="approval_cancelled",
+            content_type="task",
+            content_id=task_id,
+            title="状态变更申请已取消",
+            message=f"任务「{task.title}」的状态变更申请已被 {current_user.name} 取消",
+            link=f"/tasks?task={task_id}",
+        )
+        # 通知其他干系人
+        for stakeholder_id in stakeholder_ids[1:]:
+            notification_service.create_notification(
+                db=db,
+                recipient_id=stakeholder_id,
+                sender_id=current_user.id,
+                notification_type="approval_cancelled",
+                content_type="task",
+                content_id=task_id,
+                title="状态变更申请已取消",
+                message=f"任务「{task.title}」的状态变更申请已被 {current_user.name} 取消",
+                link=f"/tasks?task={task_id}",
+            )
+    
+    db.commit()
+    
+    # 重新加载关联数据
+    task = db.query(Task).options(
+        joinedload(Task.project),
+        joinedload(Task.meeting),
+        joinedload(Task.assignee),
+        joinedload(Task.creator)
+    ).filter(Task.id == task.id).first()
+    
+    return Response(
+        data=convert_task_to_info(db, task),
+        message="状态变更申请已取消"
+    )
+
+
 @router.post("/{task_id}/approve", response_model=Response[TaskInfo])
 def approve_status_change(
     *,
