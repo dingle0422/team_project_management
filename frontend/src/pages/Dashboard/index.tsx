@@ -128,7 +128,7 @@ export default function Dashboard() {
           end_date: weekEnd 
         }),
         // 获取所有我的任务
-        tasksApi.getMyTasks({ page_size: 200 }),
+        tasksApi.getMyTasks({ page_size: 100 }),
       ])
       
       setTodayLogs(logsRes.data.items)
