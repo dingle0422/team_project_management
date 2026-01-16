@@ -147,7 +147,7 @@ export default function Daily() {
     }
   }
 
-  // 日历单元格渲染
+  // 日历日期单元格渲染
   const dateCellRender = (value: Dayjs) => {
     const dateStr = value.format('YYYY-MM-DD')
     const dayLogs = logs.filter(log => log.work_date === dateStr)
@@ -159,6 +159,25 @@ export default function Daily() {
       <div className="calendar-cell-content">
         <Badge 
           status={totalHours >= 8 ? 'success' : 'warning'} 
+          text={`${totalHours}h`} 
+        />
+      </div>
+    )
+  }
+
+  // 日历月份单元格渲染（年视图）
+  const monthCellRender = (value: Dayjs) => {
+    // 计算该月的总工时
+    const monthStr = value.format('YYYY-MM')
+    const monthLogs = logs.filter(log => log.work_date.startsWith(monthStr))
+    const totalHours = monthLogs.reduce((sum, log) => sum + Number(log.hours), 0)
+    
+    if (monthLogs.length === 0) return null
+    
+    return (
+      <div className="calendar-month-content">
+        <Badge 
+          status={totalHours >= 160 ? 'success' : 'processing'} 
           text={`${totalHours}h`} 
         />
       </div>
@@ -206,8 +225,13 @@ export default function Daily() {
             value={selectedDate}
             onSelect={setSelectedDate}
             cellRender={(current, info) => {
-              if (info.type === 'date') return dateCellRender(current)
-              return info.originNode
+              if (info.type === 'date') {
+                return dateCellRender(current)
+              }
+              if (info.type === 'month') {
+                return monthCellRender(current)
+              }
+              return null
             }}
           />
         </div>
