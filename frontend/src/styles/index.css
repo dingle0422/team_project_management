@@ -729,3 +729,60 @@ a:hover {
 .fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* ============================================
+   日历组件全局样式修复
+   ============================================ */
+
+/* 修复日历年视图月份标签重叠问题 */
+.ant-picker-calendar .ant-picker-month-panel .ant-picker-content,
+.ant-picker-calendar .ant-picker-year-panel .ant-picker-content {
+  height: auto;
+}
+
+.ant-picker-calendar .ant-picker-month-panel .ant-picker-body,
+.ant-picker-calendar .ant-picker-year-panel .ant-picker-body {
+  padding: 8px;
+}
+
+.ant-picker-calendar .ant-picker-month-panel .ant-picker-content td,
+.ant-picker-calendar .ant-picker-year-panel .ant-picker-content td {
+  padding: 4px;
+}
+
+.ant-picker-calendar .ant-picker-month-panel .ant-picker-cell-inner,
+.ant-picker-calendar .ant-picker-year-panel .ant-picker-cell-inner {
+  min-width: 60px;
+  height: 32px;
+  line-height: 32px;
+  border-radius: var(--radius);
+}
+
+/* 小型日历组件样式优化 */
+.ant-picker-calendar-mini .ant-picker-calendar-header {
+  padding: 0 8px;
+}
+
+.ant-picker-calendar-mini .ant-picker-content th,
+.ant-picker-calendar-mini .ant-picker-content td {
+  padding: 0;
+}
+
+.ant-picker-calendar-mini .ant-picker-cell {
+  padding: 2px 0;
+}
+
+.ant-picker-calendar-mini .ant-picker-cell-inner {
+  min-width: 24px;
+  height: 24px;
+  line-height: 24px;
+}
+
+/* 主题色变量补充 */
+:root {
+  --primary-50: #FFF8E1;
+  --primary-100: #FFECB3;
+  --primary-200: #FFE082;
+  --primary-600: #F59E0B;
+  --primary-700: #D97706;
+}

@@ -91,3 +91,38 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 修复日历年视图月份标签重叠问题 */
+.calendar-section .ant-picker-calendar .ant-picker-content th,
+.calendar-section .ant-picker-calendar .ant-picker-content td {
+  min-width: 24px;
+  padding: 0;
+}
+
+.calendar-section .ant-picker-calendar .ant-picker-cell {
+  padding: 2px 0;
+}
+
+.calendar-section .ant-picker-calendar-mode-switch {
+  display: flex;
+  gap: 4px;
+}
+
+/* 年视图月份卡片样式修复 */
+.calendar-section .ant-picker-calendar .ant-picker-panel .ant-picker-month-panel,
+.calendar-section .ant-picker-calendar .ant-picker-panel .ant-picker-year-panel {
+  width: 100%;
+}
+
+.calendar-section .ant-picker-calendar .ant-picker-month-panel .ant-picker-cell,
+.calendar-section .ant-picker-calendar .ant-picker-year-panel .ant-picker-cell {
+  padding: 4px 0;
+}
+
+.calendar-section .ant-picker-calendar .ant-picker-month-panel .ant-picker-cell-inner,
+.calendar-section .ant-picker-calendar .ant-picker-year-panel .ant-picker-cell-inner {
+  width: auto;
+  min-width: 50px;
+  padding: 4px 8px;
+  font-size: 12px;
+}

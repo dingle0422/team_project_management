@@ -1,11 +1,12 @@
 import { useEffect, useState, useMemo } from 'react'
 import { 
   Button, Modal, Form, Select, DatePicker, Input, Popconfirm,
-  message, Spin, Card, List, Tag, Empty, Tabs, Calendar, Badge 
+  message, Spin, Card, List, Tag, Empty, Tabs, Badge 
 } from 'antd'
-import { PlusOutlined, RobotOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, UserOutlined, ProjectOutlined, CalendarOutlined } from '@ant-design/icons'
+import { PlusOutlined, RobotOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, UserOutlined, ProjectOutlined, CalendarOutlined, CloseCircleOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
+import weekOfYear from 'dayjs/plugin/weekOfYear'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 import { weeklyReportsApi } from '@/services/api'
@@ -14,9 +15,18 @@ import './index.css'
 
 // 启用 ISO 周插件
 dayjs.extend(isoWeek)
+dayjs.extend(weekOfYear)
 
 const { TextArea } = Input
 const { confirm } = Modal
+
+// 获取周的显示文本：YYYY年第W周
+const getWeekLabel = (weekStart: string) => {
+  const date = dayjs(weekStart)
+  const year = date.isoWeekYear()
+  const week = date.isoWeek()
+  return `${year}年第${week}周`
+}
 
 export default function Weekly() {
   const { user } = useAuthStore()
@@ -39,10 +49,8 @@ export default function Weekly() {
   const [filterMemberId, setFilterMemberId] = useState<number | undefined>()
   const [filterProjectId, setFilterProjectId] = useState<number | undefined>()
   
-  // 日历相关状态
-  const [calendarDate, setCalendarDate] = useState(dayjs())
-  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(null)
-  const [selectedWeekEnd, setSelectedWeekEnd] = useState<string | null>(null)
+  // 周选择器状态
+  const [selectedWeek, setSelectedWeek] = useState<Dayjs | null>(null)
 
   useEffect(() => {
     loadData()
@@ -68,7 +76,7 @@ export default function Weekly() {
     return { weekStart, weekEnd }
   }
 
-  // 获取包含周报的周列表（用于日历标记）
+  // 获取包含周报的周列表（用于在周选择器中标记）
   const weekReportsMap = useMemo(() => {
     const map: Record<string, WeeklyReport[]> = {}
     const filteredByTab = reports.filter(r => r.report_type === activeTab)
@@ -96,9 +104,10 @@ export default function Weekly() {
     }
     
     // 应用周筛选
-    if (selectedWeekStart && selectedWeekEnd) {
+    if (selectedWeek) {
+      const { weekStart, weekEnd } = getWeekRange(selectedWeek)
       result = result.filter(r => 
-        r.week_start === selectedWeekStart && r.week_end === selectedWeekEnd
+        r.week_start === weekStart && r.week_end === weekEnd
       )
     }
     
@@ -106,7 +115,7 @@ export default function Weekly() {
     return result.sort((a, b) => 
       new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime()
     )
-  }, [reports, activeTab, filterMemberId, filterProjectId, selectedWeekStart, selectedWeekEnd])
+  }, [reports, activeTab, filterMemberId, filterProjectId, selectedWeek])
 
   // 执行生成周报
   const doGenerate = async (
@@ -181,58 +190,37 @@ export default function Weekly() {
     }
   }
 
-  // 日历日期点击 - 选择周
-  const handleCalendarSelect = (date: Dayjs) => {
-    const { weekStart, weekEnd } = getWeekRange(date)
-    
-    // 如果点击的是已选中的周，则取消选择
-    if (selectedWeekStart === weekStart && selectedWeekEnd === weekEnd) {
-      setSelectedWeekStart(null)
-      setSelectedWeekEnd(null)
-    } else {
-      setSelectedWeekStart(weekStart)
-      setSelectedWeekEnd(weekEnd)
-    }
-    setCalendarDate(date)
+  // 周选择器变更
+  const handleWeekChange = (date: Dayjs | null) => {
+    setSelectedWeek(date)
   }
 
-  // 选中周报卡片时，同步日历选中状态
+  // 选中周报卡片时，同步周选择器
   const handleReportCardClick = (report: WeeklyReport) => {
-    // 更新日历选中的周
-    setSelectedWeekStart(report.week_start)
-    setSelectedWeekEnd(report.week_end)
-    // 将日历跳转到该周
-    setCalendarDate(dayjs(report.week_start))
+    // 更新周选择器
+    setSelectedWeek(dayjs(report.week_start))
     // 打开详情
     openDetail(report)
   }
 
-  // 日历单元格渲染 - 显示该日所在周的周报数量
-  const dateCellRender = (value: Dayjs) => {
-    const { weekStart, weekEnd } = getWeekRange(value)
+  // 周选择器自定义渲染 - 标记有周报的周
+  const weekCellRender = (current: Dayjs) => {
+    const { weekStart, weekEnd } = getWeekRange(current)
     const key = `${weekStart}_${weekEnd}`
     const weekReports = weekReportsMap[key] || []
     
-    // 只在每周第一天（周一）显示标记
-    if (value.isoWeekday() !== 1) return null
-    if (weekReports.length === 0) return null
-    
-    return (
-      <div className="calendar-week-badge">
-        <Badge 
-          count={weekReports.length} 
-          size="small"
-          style={{ backgroundColor: activeTab === 'personal' ? '#3B82F6' : '#10B981' }}
-        />
-      </div>
-    )
-  }
-
-  // 判断日期是否在选中的周范围内
-  const isDateInSelectedWeek = (date: Dayjs) => {
-    if (!selectedWeekStart || !selectedWeekEnd) return false
-    const dateStr = date.format('YYYY-MM-DD')
-    return dateStr >= selectedWeekStart && dateStr <= selectedWeekEnd
+    if (weekReports.length > 0) {
+      return (
+        <div className="week-cell-with-badge">
+          <Badge 
+            count={weekReports.length} 
+            size="small"
+            style={{ backgroundColor: activeTab === 'personal' ? '#3B82F6' : '#10B981' }}
+          />
+        </div>
+      )
+    }
+    return null
   }
 
   // 查看详情
@@ -298,25 +286,46 @@ export default function Weekly() {
   }
 
   // 判断是否可以编辑/删除
-  // - 管理员可以操作所有周报
-  // - 普通用户只能操作自己的个人周报
-  // - 项目周报只有管理员可以操作
   const canEditOrDelete = () => {
     if (!selectedReport || !user) return false
     if (user.role === 'admin') return true
     if (selectedReport.report_type === 'personal') {
-      // 使用嵌套的 member?.id，因为后端返回的是 member 对象而非 member_id
       return selectedReport.member?.id === user.id
     }
-    // 项目周报只有管理员可以编辑/删除
     return false
   }
 
   // 清除周筛选
   const clearWeekFilter = () => {
-    setSelectedWeekStart(null)
-    setSelectedWeekEnd(null)
+    setSelectedWeek(null)
   }
+
+  // 获取有周报的周列表（用于快速跳转）
+  const recentWeeksWithReports = useMemo(() => {
+    const weeks: { weekStart: string; weekEnd: string; count: number; label: string }[] = []
+    const filteredByTab = reports.filter(r => r.report_type === activeTab)
+    const weekMap: Record<string, number> = {}
+    
+    filteredByTab.forEach(report => {
+      const key = report.week_start
+      weekMap[key] = (weekMap[key] || 0) + 1
+    })
+    
+    Object.keys(weekMap)
+      .sort((a, b) => b.localeCompare(a)) // 倒序
+      .slice(0, 10) // 最近10周
+      .forEach(weekStart => {
+        const date = dayjs(weekStart)
+        weeks.push({
+          weekStart,
+          weekEnd: date.endOf('isoWeek').format('YYYY-MM-DD'),
+          count: weekMap[weekStart],
+          label: getWeekLabel(weekStart),
+        })
+      })
+    
+    return weeks
+  }, [reports, activeTab])
 
   if (loading && reports.length === 0) {
     return (
@@ -344,38 +353,78 @@ export default function Weekly() {
       </div>
 
       <div className="weekly-content">
-        {/* 左侧日历 */}
+        {/* 左侧周选择器区域 */}
         <div className="calendar-section">
           <div className="calendar-header">
             <CalendarOutlined /> 周报日历
           </div>
-          <Calendar
-            fullscreen={false}
-            value={calendarDate}
-            onSelect={handleCalendarSelect}
-            onPanelChange={(date) => setCalendarDate(date)}
-            cellRender={(current, info) => {
-              if (info.type === 'date') {
-                return (
-                  <div className={`calendar-cell ${isDateInSelectedWeek(current) ? 'selected-week' : ''}`}>
-                    {dateCellRender(current)}
-                  </div>
-                )
-              }
-              return info.originNode
-            }}
-          />
+          
+          {/* 周选择器 - 使用与生成周报相同的 DatePicker */}
+          <div className="week-picker-container">
+            <DatePicker
+              picker="week"
+              value={selectedWeek}
+              onChange={handleWeekChange}
+              style={{ width: '100%' }}
+              placeholder="选择周以筛选周报"
+              allowClear
+              cellRender={(current, info) => {
+                if (info.type === 'date') {
+                  const extraContent = weekCellRender(current as Dayjs)
+                  return (
+                    <div className="ant-picker-cell-inner">
+                      {(current as Dayjs).date()}
+                      {extraContent}
+                    </div>
+                  )
+                }
+                return info.originNode
+              }}
+            />
+          </div>
+          
           {/* 选中周的提示 */}
-          {selectedWeekStart && selectedWeekEnd && (
+          {selectedWeek && (
             <div className="selected-week-info">
               <span>
-                已选择: {selectedWeekStart} ~ {selectedWeekEnd}
+                已选择: {getWeekLabel(selectedWeek.startOf('isoWeek').format('YYYY-MM-DD'))}
               </span>
-              <Button type="link" size="small" onClick={clearWeekFilter}>
-                清除筛选
+              <Button 
+                type="text" 
+                size="small" 
+                icon={<CloseCircleOutlined />}
+                onClick={clearWeekFilter}
+              >
+                清除
               </Button>
             </div>
           )}
+          
+          {/* 有周报的周列表 - 快速跳转 */}
+          <div className="recent-weeks">
+            <div className="recent-weeks-title">有周报的周</div>
+            {recentWeeksWithReports.length === 0 ? (
+              <div className="no-weeks">暂无周报</div>
+            ) : (
+              <div className="weeks-list">
+                {recentWeeksWithReports.map(week => (
+                  <div 
+                    key={week.weekStart}
+                    className={`week-item ${selectedWeek && selectedWeek.startOf('isoWeek').format('YYYY-MM-DD') === week.weekStart ? 'active' : ''}`}
+                    onClick={() => setSelectedWeek(dayjs(week.weekStart))}
+                  >
+                    <span className="week-label">{week.label}</span>
+                    <Badge 
+                      count={week.count} 
+                      size="small"
+                      style={{ backgroundColor: activeTab === 'personal' ? '#3B82F6' : '#10B981' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* 图例说明 */}
           <div className="calendar-legend">
             <div className="legend-item">
@@ -394,7 +443,6 @@ export default function Weekly() {
               activeKey={activeTab}
               onChange={(key) => {
                 setActiveTab(key as 'personal' | 'project')
-                // 切换 Tab 时清空成员/项目筛选，但保留周筛选
                 setFilterMemberId(undefined)
                 setFilterProjectId(undefined)
               }}
@@ -410,7 +458,7 @@ export default function Weekly() {
                   children: (
                     <>
                       {/* 筛选条件 */}
-                      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <Select
                           placeholder="按成员筛选"
                           allowClear
@@ -422,13 +470,13 @@ export default function Weekly() {
                             <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
                           ))}
                         </Select>
-                        {selectedWeekStart && (
+                        {selectedWeek && (
                           <Tag 
                             closable 
                             onClose={clearWeekFilter}
                             color="blue"
                           >
-                            {selectedWeekStart} ~ {selectedWeekEnd}
+                            {getWeekLabel(selectedWeek.startOf('isoWeek').format('YYYY-MM-DD'))}
                           </Tag>
                         )}
                       </div>
@@ -436,7 +484,7 @@ export default function Weekly() {
                       {filteredReports.length === 0 ? (
                         <Empty
                           image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={selectedWeekStart ? "该周暂无个人周报" : "暂无个人周报"}
+                          description={selectedWeek ? "该周暂无个人周报" : "暂无个人周报"}
                         >
                           <Button 
                             type="primary" 
@@ -456,7 +504,7 @@ export default function Weekly() {
                           renderItem={(report) => (
                             <List.Item>
                               <Card 
-                                className={`report-card ${selectedWeekStart === report.week_start ? 'active' : ''}`}
+                                className={`report-card ${selectedWeek && selectedWeek.startOf('isoWeek').format('YYYY-MM-DD') === report.week_start ? 'active' : ''}`}
                                 hoverable
                                 onClick={() => handleReportCardClick(report)}
                               >
@@ -470,7 +518,8 @@ export default function Weekly() {
                                   {report.member?.name} 的周报
                                 </h3>
                                 <p className="report-period">
-                                  {report.week_start} ~ {report.week_end}
+                                  <span className="week-number">{getWeekLabel(report.week_start)}</span>
+                                  <span className="date-range">{report.week_start} ~ {report.week_end}</span>
                                 </p>
                                 <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
                                 <div className="report-footer">
@@ -502,7 +551,7 @@ export default function Weekly() {
                   children: (
                     <>
                       {/* 筛选条件 */}
-                      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <Select
                           placeholder="按项目筛选"
                           allowClear
@@ -514,13 +563,13 @@ export default function Weekly() {
                             <Select.Option key={p.id} value={p.id}>[{p.code}] {p.name}</Select.Option>
                           ))}
                         </Select>
-                        {selectedWeekStart && (
+                        {selectedWeek && (
                           <Tag 
                             closable 
                             onClose={clearWeekFilter}
                             color="green"
                           >
-                            {selectedWeekStart} ~ {selectedWeekEnd}
+                            {getWeekLabel(selectedWeek.startOf('isoWeek').format('YYYY-MM-DD'))}
                           </Tag>
                         )}
                       </div>
@@ -528,7 +577,7 @@ export default function Weekly() {
                       {filteredReports.length === 0 ? (
                         <Empty
                           image={Empty.PRESENTED_IMAGE_SIMPLE}
-                          description={selectedWeekStart ? "该周暂无项目周报" : "暂无项目周报"}
+                          description={selectedWeek ? "该周暂无项目周报" : "暂无项目周报"}
                         >
                           {isAdmin && (
                             <Button 
@@ -550,7 +599,7 @@ export default function Weekly() {
                           renderItem={(report) => (
                             <List.Item>
                               <Card 
-                                className={`report-card ${selectedWeekStart === report.week_start ? 'active' : ''}`}
+                                className={`report-card ${selectedWeek && selectedWeek.startOf('isoWeek').format('YYYY-MM-DD') === report.week_start ? 'active' : ''}`}
                                 hoverable
                                 onClick={() => handleReportCardClick(report)}
                               >
@@ -564,7 +613,8 @@ export default function Weekly() {
                                   {report.project?.name} 周报
                                 </h3>
                                 <p className="report-period">
-                                  {report.week_start} ~ {report.week_end}
+                                  <span className="week-number">{getWeekLabel(report.week_start)}</span>
+                                  <span className="date-range">{report.week_start} ~ {report.week_end}</span>
                                 </p>
                                 <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
                                 <div className="report-footer">
@@ -683,7 +733,9 @@ export default function Weekly() {
                     <Tag color={selectedReport.report_type === 'personal' ? 'blue' : 'green'}>
                       {selectedReport.report_type === 'personal' ? '个人周报' : '项目周报'}
                     </Tag>
-                    <span style={{ marginLeft: 8 }}>{selectedReport.week_start} ~ {selectedReport.week_end}</span>
+                    <span style={{ marginLeft: 8 }}>
+                      {getWeekLabel(selectedReport.week_start)} ({selectedReport.week_start} ~ {selectedReport.week_end})
+                    </span>
                   </div>
                   {canEditOrDelete() && (
                     <div style={{ display: 'flex', gap: 8 }}>
@@ -751,7 +803,9 @@ export default function Weekly() {
                     <Tag color={selectedReport.report_type === 'personal' ? 'blue' : 'green'}>
                       {selectedReport.report_type === 'personal' ? '个人周报' : '项目周报'}
                     </Tag>
-                    <span style={{ marginLeft: 8 }}>{selectedReport.week_start} ~ {selectedReport.week_end}</span>
+                    <span style={{ marginLeft: 8 }}>
+                      {getWeekLabel(selectedReport.week_start)} ({selectedReport.week_start} ~ {selectedReport.week_end})
+                    </span>
                   </div>
                 </div>
                 
