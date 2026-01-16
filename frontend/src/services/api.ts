@@ -180,7 +180,8 @@ export const dailyLogsApi = {
   getLogs: (params?: { 
     member_id?: number
     project_id?: number
-    work_date?: string
+    start_date?: string
+    end_date?: string
     page?: number
     page_size?: number 
   }): Promise<PaginatedResponse<DailyWorkLog>> =>

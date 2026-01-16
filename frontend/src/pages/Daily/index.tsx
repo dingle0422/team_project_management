@@ -124,11 +124,15 @@ export default function Daily() {
   // 编辑日志
   const handleEditLog = (log: DailyWorkLog) => {
     setEditingLog(log)
+    // 找到对应日期的 summary
+    const daySummary = summaries.find(s => s.summary_date === log.work_date)
     editForm.setFieldsValue({
       task_id: log.task_id,
       hours: log.hours,
       description: log.description,
       work_type: log.work_type,
+      problems: daySummary?.problems || '',
+      tomorrow_plan: daySummary?.tomorrow_plan || '',
     })
     setEditModalOpen(true)
   }
@@ -139,10 +143,28 @@ export default function Daily() {
     hours: number
     description: string
     work_type: 'development' | 'design' | 'testing' | 'meeting' | 'research' | 'other'
+    problems?: string
+    tomorrow_plan?: string
   }) => {
     if (!editingLog) return
     try {
-      await dailyLogsApi.updateLog(editingLog.id, values)
+      // 更新工时记录
+      await dailyLogsApi.updateLog(editingLog.id, {
+        task_id: values.task_id,
+        hours: values.hours,
+        description: values.description,
+        work_type: values.work_type,
+      })
+      
+      // 如果有问题或计划，更新 summary
+      if (values.problems || values.tomorrow_plan) {
+        await dailyLogsApi.createSummary({
+          summary_date: editingLog.work_date,
+          problems: values.problems,
+          tomorrow_plan: values.tomorrow_plan,
+        })
+      }
+      
       message.success('日志已更新')
       setEditModalOpen(false)
       setEditingLog(null)
@@ -657,7 +679,7 @@ export default function Daily() {
         open={editModalOpen}
         onCancel={() => { setEditModalOpen(false); setEditingLog(null); editForm.resetFields(); }}
         footer={null}
-        width={500}
+        width={600}
       >
         <Form form={editForm} layout="vertical" onFinish={handleSaveEdit}>
           <Form.Item
@@ -706,6 +728,12 @@ export default function Daily() {
             rules={[{ required: true, message: '请输入工作内容' }]}
           >
             <TextArea rows={3} placeholder="描述今天做了什么..." />
+          </Form.Item>
+          <Form.Item name="problems" label="遇到的问题">
+            <TextArea rows={2} placeholder="有什么需要帮助的问题吗？" />
+          </Form.Item>
+          <Form.Item name="tomorrow_plan" label="明日计划">
+            <TextArea rows={2} placeholder="明天打算做什么？" />
           </Form.Item>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <Button onClick={() => { setEditModalOpen(false); setEditingLog(null); editForm.resetFields(); }}>取消</Button>

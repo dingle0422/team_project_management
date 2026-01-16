@@ -72,7 +72,8 @@ export default function Dashboard() {
       
       const [logsRes, summariesRes, meetingsRes, statsRes] = await Promise.all([
         dailyLogsApi.getLogs({ 
-          work_date: today, 
+          start_date: today, 
+          end_date: today,
           member_id: currentUserId 
         }),
         dailyLogsApi.getSummaries({
@@ -154,6 +155,8 @@ export default function Dashboard() {
         hours: selectedLog.hours,
         description: selectedLog.description,
         work_type: selectedLog.work_type,
+        problems: todaySummary?.problems || '',
+        tomorrow_plan: todaySummary?.tomorrow_plan || '',
       })
       setEditLogModalOpen(true)
     }
@@ -165,10 +168,28 @@ export default function Dashboard() {
     hours: number
     description: string
     work_type: 'development' | 'design' | 'testing' | 'meeting' | 'research' | 'other'
+    problems?: string
+    tomorrow_plan?: string
   }) => {
     if (!selectedLog) return
     try {
-      await dailyLogsApi.updateLog(selectedLog.id, values)
+      // 更新工时记录
+      await dailyLogsApi.updateLog(selectedLog.id, {
+        task_id: values.task_id,
+        hours: values.hours,
+        description: values.description,
+        work_type: values.work_type,
+      })
+      
+      // 如果有问题或计划，更新 summary
+      if (values.problems || values.tomorrow_plan) {
+        await dailyLogsApi.createSummary({
+          summary_date: selectedLog.work_date,
+          problems: values.problems,
+          tomorrow_plan: values.tomorrow_plan,
+        })
+      }
+      
       message.success('日志已更新')
       setEditLogModalOpen(false)
       setSelectedLog(null)
@@ -618,7 +639,7 @@ export default function Dashboard() {
         open={editLogModalOpen}
         onCancel={() => { setEditLogModalOpen(false); setSelectedLog(null); editLogForm.resetFields(); }}
         footer={null}
-        width={500}
+        width={600}
       >
         <Form form={editLogForm} layout="vertical" onFinish={handleSaveEditLog}>
           <Form.Item
@@ -664,6 +685,12 @@ export default function Dashboard() {
             rules={[{ required: true, message: '请输入工作内容' }]}
           >
             <TextArea rows={3} placeholder="描述今天做了什么..." />
+          </Form.Item>
+          <Form.Item name="problems" label="遇到的问题">
+            <TextArea rows={2} placeholder="有什么需要帮助的问题吗？" />
+          </Form.Item>
+          <Form.Item name="tomorrow_plan" label="明日计划">
+            <TextArea rows={2} placeholder="明天打算做什么？" />
           </Form.Item>
           <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
             <Button onClick={() => { setEditLogModalOpen(false); setSelectedLog(null); editLogForm.resetFields(); }}>取消</Button>
