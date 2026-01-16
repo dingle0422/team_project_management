@@ -247,3 +247,25 @@ export interface DashboardStats {
   week_completed: number
   active_projects: number
 }
+
+// 通知类型
+export interface Notification {
+  id: number
+  recipient_id: number
+  sender?: MemberBrief
+  notification_type: 'mention' | 'assignment' | 'status_change' | 'review' | 'approval_request' | 'approval_rejected' | 'approval_cancelled'
+  content_type: 'task' | 'meeting' | 'daily_log' | 'project' | 'comment'
+  content_id: number
+  title: string
+  message?: string
+  link?: string
+  is_read: boolean
+  read_at?: string
+  created_at: string
+}
+
+export interface NotificationListData {
+  items: Notification[]
+  total: number
+  unread_count: number
+}

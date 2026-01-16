@@ -17,6 +17,87 @@
   overflow-y: auto;
 }
 
+/* 近期事项列表 */
+.recent-items-list {
+  max-height: 500px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.recent-item {
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+
+.recent-item:hover {
+  background: var(--gray-100);
+  border-color: var(--gray-200);
+  transform: translateX(4px);
+}
+
+.recent-item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-xs);
+}
+
+.recent-item-tag {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.recent-item-date {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+.recent-item-content {
+  margin-bottom: var(--spacing-xs);
+}
+
+.recent-item-title {
+  font-weight: 500;
+  color: var(--gray-800);
+  font-size: 14px;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-item-subtitle {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-top: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.recent-item-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-xs);
+}
+
+.recent-item-project {
+  font-size: 12px;
+  color: var(--gray-500);
+  background: var(--gray-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
 .log-item {
   padding: var(--spacing-sm) var(--spacing-md);
   background: var(--gray-50);

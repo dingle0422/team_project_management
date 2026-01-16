@@ -11,7 +11,8 @@ import type {
   Task,
   DailyWorkLog,
   DailySummary,
-  WeeklyReport
+  WeeklyReport,
+  NotificationListData
 } from '@/types'
 
 // 创建 axios 实例
@@ -279,6 +280,29 @@ export const weeklyReportsApi = {
   
   delete: (id: number): Promise<ApiResponse<null>> =>
     api.delete(`/weekly-reports/${id}`),
+}
+
+// ============ 通知相关 ============
+export const notificationsApi = {
+  getList: (params?: { 
+    page?: number
+    page_size?: number
+    unread_only?: boolean
+    notification_type?: string 
+  }): Promise<ApiResponse<NotificationListData>> =>
+    api.get('/notifications', { params }),
+  
+  getUnreadCount: (): Promise<ApiResponse<{ unread_count: number }>> =>
+    api.get('/notifications/unread-count'),
+  
+  markAsRead: (id: number): Promise<ApiResponse<null>> =>
+    api.put(`/notifications/${id}/read`),
+  
+  markAllAsRead: (): Promise<ApiResponse<null>> =>
+    api.put('/notifications/read-all'),
+  
+  markBatchAsRead: (ids: number[]): Promise<ApiResponse<null>> =>
+    api.put('/notifications/read-batch', { notification_ids: ids }),
 }
 
 export default api

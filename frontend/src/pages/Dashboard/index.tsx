@@ -1,13 +1,33 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar } from 'antd'
-import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
-import { tasksApi, dailyLogsApi, meetingsApi } from '@/services/api'
-import type { Task, DailyWorkLog, Meeting, DailySummary } from '@/types'
+import { tasksApi, dailyLogsApi, meetingsApi, notificationsApi } from '@/services/api'
+import type { Task, DailyWorkLog, Meeting, DailySummary, Notification } from '@/types'
 import './index.css'
+
+// 扩展 dayjs 以支持 ISO 周
+dayjs.extend(isoWeek)
+
+// 近期事项类型定义
+type RecentItemType = 'task_start' | 'task_due' | 'approval' | 'mention'
+
+interface RecentItem {
+  id: string
+  type: RecentItemType
+  title: string
+  subtitle?: string
+  date?: string
+  taskId?: number
+  notificationId?: number
+  link?: string
+  priority?: string
+  projectName?: string
+}
 
 const { TextArea } = Input
 
@@ -47,6 +67,9 @@ export default function Dashboard() {
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
   const [selectedLog, setSelectedLog] = useState<DailyWorkLog | null>(null)
   
+  // 近期事项状态
+  const [recentItems, setRecentItems] = useState<RecentItem[]>([])
+  
   // 弹窗状态
   const [dailyModalOpen, setDailyModalOpen] = useState(false)
   const [meetingModalOpen, setMeetingModalOpen] = useState(false)
@@ -70,7 +93,11 @@ export default function Dashboard() {
       const today = dayjs().format('YYYY-MM-DD')
       const currentUserId = useAuthStore.getState().user?.id
       
-      const [logsRes, summariesRes, meetingsRes, statsRes] = await Promise.all([
+      // 获取本周的开始和结束日期
+      const weekStart = dayjs().startOf('isoWeek').format('YYYY-MM-DD')
+      const weekEnd = dayjs().endOf('isoWeek').format('YYYY-MM-DD')
+      
+      const [logsRes, summariesRes, meetingsRes, statsRes, notificationsRes] = await Promise.all([
         dailyLogsApi.getLogs({ 
           start_date: today, 
           end_date: today,
@@ -83,8 +110,13 @@ export default function Dashboard() {
         }),
         meetingsApi.getList({ page_size: 5 }),
         dailyLogsApi.getStats({ 
-          start_date: dayjs().startOf('week').format('YYYY-MM-DD'), 
-          end_date: dayjs().endOf('week').format('YYYY-MM-DD') 
+          start_date: weekStart, 
+          end_date: weekEnd 
+        }),
+        // 获取通知（审核提醒和@提及）
+        notificationsApi.getList({ 
+          page_size: 50,
+          unread_only: false 
         }),
       ])
       
@@ -92,10 +124,111 @@ export default function Dashboard() {
       setTodaySummary(summariesRes.data.items?.[0] || null)
       setRecentMeetings(meetingsRes.data.items)
       
+      // 处理近期事项
+      const items: RecentItem[] = []
+      
+      // 获取最新的 myTasks
+      const tasksRes = await tasksApi.getMyTasks({ page_size: 100 })
+      const allMyTasks = tasksRes.data.items || []
+      
+      // 1. 本周开始的任务（待完成标签）
+      const weekStartTasks = allMyTasks.filter(task => {
+        if (!task.start_date) return false
+        const startDate = dayjs(task.start_date)
+        return startDate.isSame(weekStart, 'day') || 
+               (startDate.isAfter(dayjs(weekStart)) && startDate.isBefore(dayjs(weekEnd).add(1, 'day')))
+      }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
+      
+      weekStartTasks.forEach(task => {
+        items.push({
+          id: `task_start_${task.id}`,
+          type: 'task_start',
+          title: task.title,
+          subtitle: task.project?.name,
+          date: task.start_date,
+          taskId: task.id,
+          priority: task.priority,
+          projectName: task.project?.name,
+        })
+      })
+      
+      // 2. 本周到期的任务（到期预警标签）
+      const weekDueTasks = allMyTasks.filter(task => {
+        if (!task.due_date) return false
+        const dueDate = dayjs(task.due_date)
+        return dueDate.isSame(weekStart, 'day') || 
+               (dueDate.isAfter(dayjs(weekStart)) && dueDate.isBefore(dayjs(weekEnd).add(1, 'day')))
+      }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
+      
+      weekDueTasks.forEach(task => {
+        // 避免重复添加（如果同时在本周开始和到期）
+        const existingIndex = items.findIndex(item => item.taskId === task.id && item.type === 'task_start')
+        if (existingIndex === -1) {
+          items.push({
+            id: `task_due_${task.id}`,
+            type: 'task_due',
+            title: task.title,
+            subtitle: task.project?.name,
+            date: task.due_date,
+            taskId: task.id,
+            priority: task.priority,
+            projectName: task.project?.name,
+          })
+        } else {
+          // 如果已存在，标记为同时开始和到期
+          items[existingIndex].type = 'task_due' // 优先显示到期预警
+        }
+      })
+      
+      // 3. 审核提醒（用户作为审核人需要审核的任务）
+      const approvalNotifications = notificationsRes.data.items.filter(
+        (n: Notification) => (n.notification_type === 'review' || n.notification_type === 'approval_request') && !n.is_read
+      )
+      
+      approvalNotifications.forEach((notification: Notification) => {
+        items.push({
+          id: `approval_${notification.id}`,
+          type: 'approval',
+          title: notification.title,
+          subtitle: notification.message,
+          date: notification.created_at,
+          notificationId: notification.id,
+          taskId: notification.content_type === 'task' ? notification.content_id : undefined,
+          link: notification.link,
+        })
+      })
+      
+      // 4. @提及消息提醒
+      const mentionNotifications = notificationsRes.data.items.filter(
+        (n: Notification) => n.notification_type === 'mention' && !n.is_read
+      )
+      
+      mentionNotifications.forEach((notification: Notification) => {
+        items.push({
+          id: `mention_${notification.id}`,
+          type: 'mention',
+          title: notification.title,
+          subtitle: notification.message,
+          date: notification.created_at,
+          notificationId: notification.id,
+          taskId: notification.content_type === 'task' ? notification.content_id : undefined,
+          link: notification.link,
+        })
+      })
+      
+      // 按时间排序（最近的在前）
+      items.sort((a, b) => {
+        const dateA = a.date ? dayjs(a.date) : dayjs(0)
+        const dateB = b.date ? dayjs(b.date) : dayjs(0)
+        return dateB.valueOf() - dateA.valueOf()
+      })
+      
+      setRecentItems(items)
+      
       setStats({
-        todayTasks: myTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
+        todayTasks: allMyTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
         weekHours: statsRes.data.total_hours || 0,
-        weekCompleted: myTasks.filter(t => t.status === 'done').length,
+        weekCompleted: allMyTasks.filter(t => t.status === 'done').length,
         activeProjects: projects.filter(p => p.status === 'active').length,
       })
     } catch (error) {
@@ -260,6 +393,56 @@ export default function Dashboard() {
     )
   }
 
+  // 近期事项点击处理
+  const handleRecentItemClick = async (item: RecentItem) => {
+    // 如果有通知ID，标记为已读
+    if (item.notificationId) {
+      try {
+        await notificationsApi.markAsRead(item.notificationId)
+      } catch (e) {
+        console.error('Failed to mark notification as read:', e)
+      }
+    }
+    
+    // 跳转到对应页面
+    if (item.taskId) {
+      navigate(`/tasks?task=${item.taskId}`)
+    } else if (item.link) {
+      navigate(item.link)
+    }
+  }
+  
+  // 获取近期事项标签配置
+  const getRecentItemTag = (type: RecentItemType) => {
+    switch (type) {
+      case 'task_start':
+        return { label: '待完成', color: '#3B82F6', bg: '#DBEAFE', icon: <CheckCircleOutlined /> }
+      case 'task_due':
+        return { label: '到期预警', color: '#DC2626', bg: '#FEE2E2', icon: <ExclamationCircleOutlined /> }
+      case 'approval':
+        return { label: '审核提醒', color: '#D97706', bg: '#FEF3C7', icon: <ClockCircleOutlined /> }
+      case 'mention':
+        return { label: '消息提醒', color: '#8B5CF6', bg: '#EDE9FE', icon: <BellOutlined /> }
+      default:
+        return { label: '提醒', color: '#6B7280', bg: '#F3F4F6', icon: <BellOutlined /> }
+    }
+  }
+  
+  // 格式化相对时间
+  const formatRelativeDate = (dateStr?: string) => {
+    if (!dateStr) return ''
+    const date = dayjs(dateStr)
+    const now = dayjs()
+    const diffDays = date.diff(now, 'day')
+    
+    if (date.isSame(now, 'day')) return '今天'
+    if (diffDays === 1) return '明天'
+    if (diffDays === -1) return '昨天'
+    if (diffDays > 0 && diffDays <= 7) return `${diffDays}天后`
+    if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)}天前`
+    return date.format('M月D日')
+  }
+
   const pendingTasks = myTasks.filter(t => 
     t.status === 'todo' || t.status === 'task_review' || t.status === 'in_progress' || t.status === 'result_review'
   ).slice(0, 5)
@@ -315,43 +498,69 @@ export default function Dashboard() {
 
       {/* 三栏布局 */}
       <div className="dashboard-grid three-col">
-        {/* 今日待办 */}
+        {/* 近期事项 */}
         <div className="dashboard-section">
           <div className="section-header">
-            <h2>📋 今日待办</h2>
+            <h2>📋 近期事项</h2>
             <Link to="/tasks" className="link-btn">查看全部 →</Link>
           </div>
-          <div className="task-list">
-            {pendingTasks.length === 0 ? (
+          <div className="recent-items-list">
+            {recentItems.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🎉</div>
-                <div className="empty-state-text">暂无待办任务</div>
+                <div className="empty-state-text">暂无近期事项</div>
               </div>
             ) : (
-              pendingTasks.map(task => (
-                <div 
-                  key={task.id} 
-                  className="task-item clickable"
-                  onClick={() => navigate(`/tasks?task=${task.id}`)}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="task-checkbox" />
-                  <div className="task-content">
-                    <div className="task-title">{task.title}</div>
-                    <div className="task-meta">
-                      <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
-                        {task.priority === 'urgent' ? '紧急' : 
-                         task.priority === 'high' ? '高' : 
-                         task.priority === 'medium' ? '中' : '低'}
-                      </span>
-                      <span>{task.project?.name}</span>
-                      {task.estimated_hours && (
-                        <span className="task-hours">{task.estimated_hours}h</span>
+              recentItems.slice(0, 8).map(item => {
+                const tagConfig = getRecentItemTag(item.type)
+                return (
+                  <div 
+                    key={item.id} 
+                    className="recent-item clickable"
+                    onClick={() => handleRecentItemClick(item)}
+                  >
+                    <div className="recent-item-header">
+                      <Tag 
+                        className="recent-item-tag"
+                        style={{ 
+                          color: tagConfig.color, 
+                          background: tagConfig.bg,
+                          border: 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {tagConfig.icon}
+                        {tagConfig.label}
+                      </Tag>
+                      {item.date && (
+                        <span className="recent-item-date">
+                          {formatRelativeDate(item.date)}
+                        </span>
                       )}
                     </div>
+                    <div className="recent-item-content">
+                      <div className="recent-item-title">{item.title}</div>
+                      {item.subtitle && (
+                        <div className="recent-item-subtitle">{item.subtitle}</div>
+                      )}
+                    </div>
+                    {item.priority && (
+                      <div className="recent-item-footer">
+                        <span className={`priority-badge ${getPriorityClass(item.priority)}`}>
+                          {item.priority === 'urgent' ? '紧急' : 
+                           item.priority === 'high' ? '高' : 
+                           item.priority === 'medium' ? '中' : '低'}
+                        </span>
+                        {item.projectName && (
+                          <span className="recent-item-project">{item.projectName}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))
+                )
+              })
             )}
           </div>
         </div>
