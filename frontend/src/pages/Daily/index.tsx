@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { 
   Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm,
   message, Spin, Calendar, Badge, List, Avatar, Tag 
 } from 'antd'
-import type { BadgeProps } from 'antd'
+import type { BadgeProps, CalendarProps } from 'antd'
 import { PlusOutlined, CalendarOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
@@ -30,6 +30,7 @@ export default function Daily() {
   
   const [loading, setLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(dayjs())
+  const [calendarMode, setCalendarMode] = useState<'month' | 'year'>('month')
   const [logs, setLogs] = useState<DailyWorkLog[]>([])
   const [summaries, setSummaries] = useState<DailySummary[]>([])
   const [modalOpen, setModalOpen] = useState(false)
@@ -184,10 +185,46 @@ export default function Daily() {
     )
   }
 
+  // 日历面板变化时的处理
+  const handlePanelChange: CalendarProps<Dayjs>['onPanelChange'] = (date, mode) => {
+    setSelectedDate(date)
+    setCalendarMode(mode)
+  }
+
   // 获取选中日期的日志
   const selectedDateLogs = logs.filter(
     log => log.work_date === selectedDate.format('YYYY-MM-DD')
   )
+
+  // 获取选中月份的日志（年视图下使用）
+  const selectedMonthLogs = useMemo(() => {
+    const monthStr = selectedDate.format('YYYY-MM')
+    return logs.filter(log => log.work_date.startsWith(monthStr))
+  }, [logs, selectedDate])
+
+  // 按日期分组的月度日志
+  const groupedMonthLogs = useMemo(() => {
+    const groups: Record<string, DailyWorkLog[]> = {}
+    selectedMonthLogs.forEach(log => {
+      if (!groups[log.work_date]) {
+        groups[log.work_date] = []
+      }
+      groups[log.work_date].push(log)
+    })
+    // 按日期倒序排列
+    return Object.entries(groups).sort((a, b) => b[0].localeCompare(a[0]))
+  }, [selectedMonthLogs])
+
+  // 月度统计
+  const monthStats = useMemo(() => {
+    const totalHours = selectedMonthLogs.reduce((sum, log) => sum + Number(log.hours), 0)
+    const workDays = new Set(selectedMonthLogs.map(log => log.work_date)).size
+    const byType: Record<string, number> = {}
+    selectedMonthLogs.forEach(log => {
+      byType[log.work_type] = (byType[log.work_type] || 0) + Number(log.hours)
+    })
+    return { totalHours, workDays, byType }
+  }, [selectedMonthLogs])
 
   // 过滤掉已取消的任务（用于日报选择）
   const availableTasks = myTasks.filter(task => task.status !== 'cancelled')
@@ -224,6 +261,7 @@ export default function Daily() {
             fullscreen={false}
             value={selectedDate}
             onSelect={setSelectedDate}
+            onPanelChange={handlePanelChange}
             cellRender={(current, info) => {
               if (info.type === 'date') {
                 return dateCellRender(current)
@@ -238,96 +276,192 @@ export default function Daily() {
 
         {/* 右侧日志列表 */}
         <div className="logs-section">
-          <div className="section-header">
-            <h2>
-              <CalendarOutlined /> {selectedDate.format('YYYY年M月D日')} 工作记录
-            </h2>
-            <Button 
-              type="link" 
-              icon={<PlusOutlined />}
-              onClick={() => setModalOpen(true)}
-            >
-              添加
-            </Button>
-          </div>
-
-          {selectedDateLogs.length === 0 ? (
-            <div className="empty-state">
-              <div className="empty-state-icon">📝</div>
-              <div className="empty-state-text">当日暂无工作记录</div>
-              <Button 
-                type="primary" 
-                style={{ marginTop: 16 }}
-                onClick={() => setModalOpen(true)}
-              >
-                立即填写
-              </Button>
-            </div>
-          ) : (
-            <List
-              itemLayout="horizontal"
-              dataSource={selectedDateLogs}
-              renderItem={(log) => (
-                <List.Item
-                  actions={[
-                    <Button 
-                      key="edit" 
-                      type="text" 
-                      icon={<EditOutlined />}
-                      onClick={() => handleEditLog(log)}
-                    />,
-                    <Popconfirm
-                      key="delete"
-                      title="确认删除"
-                      description="确定要删除这条工时记录吗？"
-                      onConfirm={() => handleDeleteLog(log.id)}
-                      okText="确认"
-                      cancelText="取消"
-                    >
-                      <Button type="text" danger icon={<DeleteOutlined />} />
-                    </Popconfirm>
-                  ]}
+          {calendarMode === 'month' ? (
+            // 月视图 - 显示选中日期的日志
+            <>
+              <div className="section-header">
+                <h2>
+                  <CalendarOutlined /> {selectedDate.format('YYYY年M月D日')} 工作记录
+                </h2>
+                <Button 
+                  type="link" 
+                  icon={<PlusOutlined />}
+                  onClick={() => setModalOpen(true)}
                 >
-                  <List.Item.Meta
-                    avatar={
-                      <Avatar style={{ background: WORK_TYPE_CONFIG[log.work_type]?.color }}>
-                        {log.hours}h
-                      </Avatar>
-                    }
-                    title={
-                      <div className="log-title">
-                        <span>{log.task?.title || '未关联任务'}</span>
-                        <Tag color={WORK_TYPE_CONFIG[log.work_type]?.color}>
-                          {WORK_TYPE_CONFIG[log.work_type]?.label}
-                        </Tag>
-                      </div>
-                    }
-                    description={
-                      <div className="log-desc">
-                        <p>{log.description}</p>
-                        <span className="log-project">{log.project?.name}</span>
-                      </div>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          )}
+                  添加
+                </Button>
+              </div>
 
-          {/* 统计 */}
-          {selectedDateLogs.length > 0 && (
-            <div className="day-stats">
-              <div className="stat-item">
-                <span className="label">总工时</span>
-                <span className="value">
-                  {selectedDateLogs.reduce((sum, log) => sum + Number(log.hours), 0)}h
-                </span>
+              {selectedDateLogs.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📝</div>
+                  <div className="empty-state-text">当日暂无工作记录</div>
+                  <Button 
+                    type="primary" 
+                    style={{ marginTop: 16 }}
+                    onClick={() => setModalOpen(true)}
+                  >
+                    立即填写
+                  </Button>
+                </div>
+              ) : (
+                <List
+                  itemLayout="horizontal"
+                  dataSource={selectedDateLogs}
+                  renderItem={(log) => (
+                    <List.Item
+                      actions={[
+                        <Button 
+                          key="edit" 
+                          type="text" 
+                          icon={<EditOutlined />}
+                          onClick={() => handleEditLog(log)}
+                        />,
+                        <Popconfirm
+                          key="delete"
+                          title="确认删除"
+                          description="确定要删除这条工时记录吗？"
+                          onConfirm={() => handleDeleteLog(log.id)}
+                          okText="确认"
+                          cancelText="取消"
+                        >
+                          <Button type="text" danger icon={<DeleteOutlined />} />
+                        </Popconfirm>
+                      ]}
+                    >
+                      <List.Item.Meta
+                        avatar={
+                          <Avatar style={{ background: WORK_TYPE_CONFIG[log.work_type]?.color }}>
+                            {log.hours}h
+                          </Avatar>
+                        }
+                        title={
+                          <div className="log-title">
+                            <span>{log.task?.title || '未关联任务'}</span>
+                            <Tag color={WORK_TYPE_CONFIG[log.work_type]?.color}>
+                              {WORK_TYPE_CONFIG[log.work_type]?.label}
+                            </Tag>
+                          </div>
+                        }
+                        description={
+                          <div className="log-desc">
+                            <p>{log.description}</p>
+                            <span className="log-project">{log.project?.name}</span>
+                          </div>
+                        }
+                      />
+                    </List.Item>
+                  )}
+                />
+              )}
+
+              {/* 日统计 */}
+              {selectedDateLogs.length > 0 && (
+                <div className="day-stats">
+                  <div className="stat-item">
+                    <span className="label">总工时</span>
+                    <span className="value">
+                      {selectedDateLogs.reduce((sum, log) => sum + Number(log.hours), 0)}h
+                    </span>
+                  </div>
+                  <div className="stat-item">
+                    <span className="label">任务数</span>
+                    <span className="value">{selectedDateLogs.length}</span>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            // 年视图 - 显示选中月份的日志汇总
+            <>
+              <div className="section-header">
+                <h2>
+                  <CalendarOutlined /> {selectedDate.format('YYYY年M月')} 工作汇总
+                </h2>
               </div>
-              <div className="stat-item">
-                <span className="label">任务数</span>
-                <span className="value">{selectedDateLogs.length}</span>
+
+              {/* 月度统计卡片 */}
+              <div className="month-stats-cards">
+                <div className="month-stat-card">
+                  <span className="stat-value">{monthStats.totalHours}h</span>
+                  <span className="stat-label">总工时</span>
+                </div>
+                <div className="month-stat-card">
+                  <span className="stat-value">{monthStats.workDays}</span>
+                  <span className="stat-label">工作天数</span>
+                </div>
+                <div className="month-stat-card">
+                  <span className="stat-value">{selectedMonthLogs.length}</span>
+                  <span className="stat-label">记录数</span>
+                </div>
               </div>
-            </div>
+
+              {/* 工作类型分布 */}
+              {Object.keys(monthStats.byType).length > 0 && (
+                <div className="work-type-stats">
+                  <h4>工作类型分布</h4>
+                  <div className="type-bars">
+                    {Object.entries(monthStats.byType)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([type, hours]) => (
+                        <div key={type} className="type-bar-item">
+                          <div className="type-info">
+                            <Tag color={WORK_TYPE_CONFIG[type]?.color}>
+                              {WORK_TYPE_CONFIG[type]?.label}
+                            </Tag>
+                            <span>{hours}h</span>
+                          </div>
+                          <div className="type-bar">
+                            <div 
+                              className="type-bar-fill"
+                              style={{ 
+                                width: `${(hours / monthStats.totalHours) * 100}%`,
+                                backgroundColor: WORK_TYPE_CONFIG[type]?.color 
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 按日期分组的日志列表 */}
+              {groupedMonthLogs.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">📅</div>
+                  <div className="empty-state-text">本月暂无工作记录</div>
+                </div>
+              ) : (
+                <div className="month-logs-list">
+                  <h4>日报记录</h4>
+                  {groupedMonthLogs.map(([date, dayLogs]) => {
+                    const dayTotal = dayLogs.reduce((sum, log) => sum + Number(log.hours), 0)
+                    return (
+                      <div key={date} className="day-group">
+                        <div className="day-group-header">
+                          <span className="day-date">{dayjs(date).format('M月D日 ddd')}</span>
+                          <Badge 
+                            count={`${dayTotal}h`} 
+                            style={{ backgroundColor: dayTotal >= 8 ? '#52c41a' : '#faad14' }}
+                          />
+                        </div>
+                        <div className="day-group-logs">
+                          {dayLogs.map(log => (
+                            <div key={log.id} className="mini-log-item">
+                              <Tag color={WORK_TYPE_CONFIG[log.work_type]?.color} style={{ marginRight: 8 }}>
+                                {log.hours}h
+                              </Tag>
+                              <span className="mini-log-task">{log.task?.title || '未关联任务'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

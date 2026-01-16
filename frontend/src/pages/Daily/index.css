@@ -24,6 +24,135 @@
   margin-top: 4px;
 }
 
+/* 月度统计卡片 */
+.month-stats-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.month-stat-card {
+  background: var(--gray-50);
+  border-radius: var(--radius);
+  padding: var(--spacing-md);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.month-stat-card .stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--gray-800);
+}
+
+.month-stat-card .stat-label {
+  font-size: 12px;
+  color: var(--gray-500);
+}
+
+/* 工作类型分布 */
+.work-type-stats {
+  margin-bottom: var(--spacing-lg);
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius);
+}
+
+.work-type-stats h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--spacing-md);
+}
+
+.type-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.type-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.type-bar-item .type-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--gray-600);
+}
+
+.type-bar {
+  height: 8px;
+  background: var(--gray-200);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.type-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+/* 月度日志列表 */
+.month-logs-list {
+  margin-top: var(--spacing-md);
+}
+
+.month-logs-list h4 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--gray-700);
+  margin-bottom: var(--spacing-md);
+}
+
+.day-group {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: var(--gray-50);
+  border-radius: var(--radius);
+}
+
+.day-group-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.day-group-header .day-date {
+  font-weight: 500;
+  color: var(--gray-700);
+}
+
+.day-group-logs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mini-log-item {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+}
+
+.mini-log-item .mini-log-task {
+  color: var(--gray-600);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .logs-section {
   background: var(--white);
   border-radius: var(--radius-md);
