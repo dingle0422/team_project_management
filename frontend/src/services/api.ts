@@ -171,7 +171,7 @@ export const tasksApi = {
     api.delete(`/tasks/${taskId}/stakeholders/${memberId}`),
   
   // 我的任务
-  getMyTasks: (params?: { status?: string }): Promise<PaginatedResponse<Task>> =>
+  getMyTasks: (params?: { status?: string; page?: number; page_size?: number }): Promise<PaginatedResponse<Task>> =>
     api.get('/tasks/my', { params }),
 }
 

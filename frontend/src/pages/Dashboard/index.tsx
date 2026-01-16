@@ -455,13 +455,6 @@ export default function Dashboard() {
           <h1>{getGreeting()}，{user?.name} 👋</h1>
           <p className="subtitle">今天是 {formatDate()}</p>
         </div>
-        <Button 
-          type="primary" 
-          icon={<EditOutlined />}
-          onClick={() => setDailyModalOpen(true)}
-        >
-          填写今日日报
-        </Button>
       </div>
 
       {/* 统计卡片 */}

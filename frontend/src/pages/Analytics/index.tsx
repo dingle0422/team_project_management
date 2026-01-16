@@ -113,13 +113,6 @@ export default function Analytics() {
             <div className="stat-label">团队成员</div>
           </div>
         </div>
-        <div className="stat-card">
-          <div className="stat-icon" style={{ background: '#E0E7FF' }}>⏰</div>
-          <div className="stat-content">
-            <div className="stat-value">{stats?.total_hours || 0}h</div>
-            <div className="stat-label">本周总工时</div>
-          </div>
-        </div>
       </div>
 
       {/* 图表区域 */}
@@ -179,43 +172,73 @@ export default function Analytics() {
         {/* 项目工时分布 */}
         <Col xs={24} lg={12}>
           <Card title="本周项目工时分布" className="chart-card">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={stats?.by_project || []}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="project_name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="hours" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {(stats?.by_project || []).length === 0 ? (
+              <div style={{ 
+                height: 300, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexDirection: 'column',
+                color: '#9CA3AF'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>📈</div>
+                <div>暂无项目工时数据</div>
+                <div style={{ fontSize: 12, marginTop: 8 }}>记录工时后将显示分布图</div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={stats?.by_project || []}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="project_name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="hours" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </Col>
 
         {/* 工作类型分布 */}
         <Col xs={24} lg={12}>
           <Card title="本周工作类型分布" className="chart-card">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={(stats?.by_type || []).map((item, index) => ({
-                    name: workTypeMap[item.work_type] || item.work_type,
-                    value: item.hours,
-                    color: COLORS[index % COLORS.length],
-                  }))}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}h`}
-                >
-                  {(stats?.by_type || []).map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            {(stats?.by_type || []).length === 0 ? (
+              <div style={{ 
+                height: 300, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexDirection: 'column',
+                color: '#9CA3AF'
+              }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>📊</div>
+                <div>暂无工作类型数据</div>
+                <div style={{ fontSize: 12, marginTop: 8 }}>记录工时后将显示分布图</div>
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={(stats?.by_type || []).map((item, index) => ({
+                      name: workTypeMap[item.work_type] || item.work_type,
+                      value: item.hours,
+                      color: COLORS[index % COLORS.length],
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    dataKey="value"
+                    label={({ name, value }) => `${name}: ${value}h`}
+                  >
+                    {(stats?.by_type || []).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </Col>
       </Row>
