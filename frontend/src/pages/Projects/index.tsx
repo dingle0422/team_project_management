@@ -128,11 +128,11 @@ export default function Projects() {
     }
   }
 
-  // 判断是否可以编辑/删除（只有创建者可以）
+  // 判断是否可以编辑/删除（管理员可以编辑/删除任何项目，普通用户只能编辑/删除自己创建的）
   const canEditOrDelete = () => {
     if (!selectedProject || !user) return false
-    // 只有创建者可以编辑和删除项目
-    return selectedProject.created_by === user.id
+    // 管理员可以编辑/删除任何项目，普通用户只能编辑/删除自己创建的项目
+    return user.role === 'admin' || selectedProject.created_by === user.id
   }
 
   // 跳转到任务页面

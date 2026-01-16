@@ -86,6 +86,50 @@ def convert_report_to_info(report: WeeklyReport) -> WeeklyReportInfo:
     )
 
 
+# ==================== 检查周报是否存在 ====================
+# 注意：此路由必须放在 /{report_id} 之前，否则会被错误匹配
+
+@router.get("/check-exists", response_model=Response)
+def check_weekly_report_exists(
+    *,
+    db: Session = Depends(get_db),
+    current_user: Member = Depends(get_current_user),
+    report_type: str = Query(..., description="类型: personal, project"),
+    week_start: date = Query(..., description="周开始日期"),
+    week_end: date = Query(..., description="周结束日期"),
+    project_id: Optional[int] = Query(None, description="项目ID（项目周报必填）"),
+    member_id: Optional[int] = Query(None, description="成员ID（个人周报可选）"),
+):
+    """
+    检查指定条件的周报是否已存在
+    """
+    query = db.query(WeeklyReport).filter(
+        WeeklyReport.report_type == report_type,
+        WeeklyReport.week_start == week_start,
+        WeeklyReport.week_end == week_end,
+    )
+    
+    if report_type == "personal":
+        target_member_id = member_id or current_user.id
+        query = query.filter(WeeklyReport.member_id == target_member_id)
+    else:
+        if not project_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="项目周报必须指定 project_id"
+            )
+        query = query.filter(WeeklyReport.project_id == project_id)
+    
+    existing = query.first()
+    
+    return Response(
+        data={
+            "exists": existing is not None,
+            "report_id": existing.id if existing else None,
+        }
+    )
+
+
 # ==================== 周报列表 ====================
 
 @router.get("", response_model=PaginatedResponse[WeeklyReportListItem])
@@ -190,49 +234,6 @@ def get_weekly_report(
             **info.model_dump(),
             raw_data=report.raw_data,
         )
-    )
-
-
-# ==================== 检查周报是否存在 ====================
-
-@router.get("/check-exists", response_model=Response)
-def check_weekly_report_exists(
-    *,
-    db: Session = Depends(get_db),
-    current_user: Member = Depends(get_current_user),
-    report_type: str = Query(..., description="类型: personal, project"),
-    week_start: date = Query(..., description="周开始日期"),
-    week_end: date = Query(..., description="周结束日期"),
-    project_id: Optional[int] = Query(None, description="项目ID（项目周报必填）"),
-    member_id: Optional[int] = Query(None, description="成员ID（个人周报可选）"),
-):
-    """
-    检查指定条件的周报是否已存在
-    """
-    query = db.query(WeeklyReport).filter(
-        WeeklyReport.report_type == report_type,
-        WeeklyReport.week_start == week_start,
-        WeeklyReport.week_end == week_end,
-    )
-    
-    if report_type == "personal":
-        target_member_id = member_id or current_user.id
-        query = query.filter(WeeklyReport.member_id == target_member_id)
-    else:
-        if not project_id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="项目周报必须指定 project_id"
-            )
-        query = query.filter(WeeklyReport.project_id == project_id)
-    
-    existing = query.first()
-    
-    return Response(
-        data={
-            "exists": existing is not None,
-            "report_id": existing.id if existing else None,
-        }
     )
 
 

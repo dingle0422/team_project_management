@@ -1,15 +1,19 @@
 import { useEffect, useState, useMemo } from 'react'
 import { 
   Button, Modal, Form, Select, DatePicker, Input, Popconfirm,
-  message, Spin, Card, List, Avatar, Tag, Empty, Tabs 
+  message, Spin, Card, List, Tag, Empty, Tabs, Calendar, Badge 
 } from 'antd'
-import { PlusOutlined, RobotOutlined, FileTextOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, UserOutlined, ProjectOutlined } from '@ant-design/icons'
-import dayjs from 'dayjs'
+import { PlusOutlined, RobotOutlined, EditOutlined, DeleteOutlined, ExclamationCircleOutlined, UserOutlined, ProjectOutlined, CalendarOutlined } from '@ant-design/icons'
+import dayjs, { Dayjs } from 'dayjs'
+import isoWeek from 'dayjs/plugin/isoWeek'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 import { weeklyReportsApi } from '@/services/api'
 import type { WeeklyReport } from '@/types'
 import './index.css'
+
+// 启用 ISO 周插件
+dayjs.extend(isoWeek)
 
 const { TextArea } = Input
 const { confirm } = Modal
@@ -34,6 +38,11 @@ export default function Weekly() {
   const [activeTab, setActiveTab] = useState<'personal' | 'project'>('personal')
   const [filterMemberId, setFilterMemberId] = useState<number | undefined>()
   const [filterProjectId, setFilterProjectId] = useState<number | undefined>()
+  
+  // 日历相关状态
+  const [calendarDate, setCalendarDate] = useState(dayjs())
+  const [selectedWeekStart, setSelectedWeekStart] = useState<string | null>(null)
+  const [selectedWeekEnd, setSelectedWeekEnd] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -52,12 +61,33 @@ export default function Weekly() {
     }
   }
 
-  // 根据 Tab 和筛选条件过滤并排序周报
+  // 获取某个日期所属的周信息（周一为起始）
+  const getWeekRange = (date: Dayjs) => {
+    const weekStart = date.startOf('isoWeek').format('YYYY-MM-DD')
+    const weekEnd = date.endOf('isoWeek').format('YYYY-MM-DD')
+    return { weekStart, weekEnd }
+  }
+
+  // 获取包含周报的周列表（用于日历标记）
+  const weekReportsMap = useMemo(() => {
+    const map: Record<string, WeeklyReport[]> = {}
+    const filteredByTab = reports.filter(r => r.report_type === activeTab)
+    
+    filteredByTab.forEach(report => {
+      const key = `${report.week_start}_${report.week_end}`
+      if (!map[key]) {
+        map[key] = []
+      }
+      map[key].push(report)
+    })
+    return map
+  }, [reports, activeTab])
+
+  // 根据 Tab、筛选条件和选中的周过滤并排序周报
   const filteredReports = useMemo(() => {
     let result = reports.filter(r => r.report_type === activeTab)
     
-    // 应用筛选 - 使用 member?.id 和 project?.id 而不是 member_id / project_id
-    // 因为后端返回的列表数据中只有嵌套的 member/project 对象
+    // 应用成员/项目筛选
     if (activeTab === 'personal' && filterMemberId) {
       result = result.filter(r => r.member?.id === filterMemberId)
     }
@@ -65,11 +95,18 @@ export default function Weekly() {
       result = result.filter(r => r.project?.id === filterProjectId)
     }
     
+    // 应用周筛选
+    if (selectedWeekStart && selectedWeekEnd) {
+      result = result.filter(r => 
+        r.week_start === selectedWeekStart && r.week_end === selectedWeekEnd
+      )
+    }
+    
     // 按生成时间倒序排列
     return result.sort((a, b) => 
       new Date(b.generated_at).getTime() - new Date(a.generated_at).getTime()
     )
-  }, [reports, activeTab, filterMemberId, filterProjectId])
+  }, [reports, activeTab, filterMemberId, filterProjectId, selectedWeekStart, selectedWeekEnd])
 
   // 执行生成周报
   const doGenerate = async (
@@ -107,8 +144,8 @@ export default function Weekly() {
     project_id?: number
     week: dayjs.Dayjs
   }) => {
-    const weekStart = values.week.startOf('week').format('YYYY-MM-DD')
-    const weekEnd = values.week.endOf('week').format('YYYY-MM-DD')
+    const weekStart = values.week.startOf('isoWeek').format('YYYY-MM-DD')
+    const weekEnd = values.week.endOf('isoWeek').format('YYYY-MM-DD')
     
     if (values.report_type === 'project' && !values.project_id) {
       message.error('请选择项目')
@@ -129,7 +166,7 @@ export default function Weekly() {
         confirm({
           title: '周报已存在',
           icon: <ExclamationCircleOutlined />,
-          content: `该时间段的${values.report_type === 'personal' ? '个人' : '项目'}周报已存在，是否重新生成并覆盖？`,
+          content: `该时间段（${weekStart} ~ ${weekEnd}）的${values.report_type === 'personal' ? '个人' : '项目'}周报已存在，重新生成将覆盖原有内容。是否继续？`,
           okText: '重新生成',
           cancelText: '取消',
           onOk: () => doGenerate(values.report_type, weekStart, weekEnd, values.project_id),
@@ -144,10 +181,64 @@ export default function Weekly() {
     }
   }
 
+  // 日历日期点击 - 选择周
+  const handleCalendarSelect = (date: Dayjs) => {
+    const { weekStart, weekEnd } = getWeekRange(date)
+    
+    // 如果点击的是已选中的周，则取消选择
+    if (selectedWeekStart === weekStart && selectedWeekEnd === weekEnd) {
+      setSelectedWeekStart(null)
+      setSelectedWeekEnd(null)
+    } else {
+      setSelectedWeekStart(weekStart)
+      setSelectedWeekEnd(weekEnd)
+    }
+    setCalendarDate(date)
+  }
+
+  // 选中周报卡片时，同步日历选中状态
+  const handleReportCardClick = (report: WeeklyReport) => {
+    // 更新日历选中的周
+    setSelectedWeekStart(report.week_start)
+    setSelectedWeekEnd(report.week_end)
+    // 将日历跳转到该周
+    setCalendarDate(dayjs(report.week_start))
+    // 打开详情
+    openDetail(report)
+  }
+
+  // 日历单元格渲染 - 显示该日所在周的周报数量
+  const dateCellRender = (value: Dayjs) => {
+    const { weekStart, weekEnd } = getWeekRange(value)
+    const key = `${weekStart}_${weekEnd}`
+    const weekReports = weekReportsMap[key] || []
+    
+    // 只在每周第一天（周一）显示标记
+    if (value.isoWeekday() !== 1) return null
+    if (weekReports.length === 0) return null
+    
+    return (
+      <div className="calendar-week-badge">
+        <Badge 
+          count={weekReports.length} 
+          size="small"
+          style={{ backgroundColor: activeTab === 'personal' ? '#3B82F6' : '#10B981' }}
+        />
+      </div>
+    )
+  }
+
+  // 判断日期是否在选中的周范围内
+  const isDateInSelectedWeek = (date: Dayjs) => {
+    if (!selectedWeekStart || !selectedWeekEnd) return false
+    const dateStr = date.format('YYYY-MM-DD')
+    return dateStr >= selectedWeekStart && dateStr <= selectedWeekEnd
+  }
+
   // 查看详情
   const openDetail = async (report: WeeklyReport) => {
     setIsEditing(false)
-    setSelectedReport(report)  // 先显示基本信息
+    setSelectedReport(report)
     setDetailModalOpen(true)
     setDetailLoading(true)
     try {
@@ -155,7 +246,6 @@ export default function Weekly() {
       setSelectedReport(res.data)
     } catch (err) {
       console.error('Failed to load report detail:', err)
-      // 保持使用基本信息
     } finally {
       setDetailLoading(false)
     }
@@ -215,10 +305,17 @@ export default function Weekly() {
     if (!selectedReport || !user) return false
     if (user.role === 'admin') return true
     if (selectedReport.report_type === 'personal') {
-      return selectedReport.member_id === user.id
+      // 使用嵌套的 member?.id，因为后端返回的是 member 对象而非 member_id
+      return selectedReport.member?.id === user.id
     }
     // 项目周报只有管理员可以编辑/删除
     return false
+  }
+
+  // 清除周筛选
+  const clearWeekFilter = () => {
+    setSelectedWeekStart(null)
+    setSelectedWeekEnd(null)
   }
 
   if (loading && reports.length === 0) {
@@ -246,188 +343,253 @@ export default function Weekly() {
         </Button>
       </div>
 
-      {/* 周报列表 - 带 Tab */}
-      <Card>
-        <Tabs
-          activeKey={activeTab}
-          onChange={(key) => {
-            setActiveTab(key as 'personal' | 'project')
-            // 切换 Tab 时清空筛选
-            setFilterMemberId(undefined)
-            setFilterProjectId(undefined)
-          }}
-          items={[
-            {
-              key: 'personal',
-              label: (
-                <span>
-                  <UserOutlined />
-                  个人周报
-                </span>
-              ),
-              children: (
-                <>
-                  {/* 筛选条件 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <Select
-                      placeholder="按成员筛选"
-                      allowClear
-                      style={{ width: 200 }}
-                      value={filterMemberId}
-                      onChange={setFilterMemberId}
-                    >
-                      {members.map(m => (
-                        <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                      ))}
-                    </Select>
+      <div className="weekly-content">
+        {/* 左侧日历 */}
+        <div className="calendar-section">
+          <div className="calendar-header">
+            <CalendarOutlined /> 周报日历
+          </div>
+          <Calendar
+            fullscreen={false}
+            value={calendarDate}
+            onSelect={handleCalendarSelect}
+            onPanelChange={(date) => setCalendarDate(date)}
+            cellRender={(current, info) => {
+              if (info.type === 'date') {
+                return (
+                  <div className={`calendar-cell ${isDateInSelectedWeek(current) ? 'selected-week' : ''}`}>
+                    {dateCellRender(current)}
                   </div>
-                  {/* 周报列表 */}
-                  {filteredReports.length === 0 ? (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description="暂无个人周报"
-                    >
-                      <Button 
-                        type="primary" 
-                        icon={<PlusOutlined />}
-                        onClick={() => {
-                          form.setFieldValue('report_type', 'personal')
-                          setGenerateModalOpen(true)
-                        }}
-                      >
-                        生成个人周报
-                      </Button>
-                    </Empty>
-                  ) : (
-                    <List
-                      grid={{ gutter: 24, xs: 1, sm: 2, md: 2, lg: 3, xl: 3 }}
-                      dataSource={filteredReports}
-                      renderItem={(report) => (
-                        <List.Item>
-                          <Card 
-                            className="report-card"
-                            hoverable
-                            onClick={() => openDetail(report)}
-                          >
-                            <div className="report-header">
-                              <Tag color="blue">个人周报</Tag>
-                              <span className="report-date">
-                                {dayjs(report.generated_at).format('YYYY-MM-DD HH:mm')}
-                              </span>
-                            </div>
-                            <h3 className="report-title">
-                              {report.member?.name} 的周报
-                            </h3>
-                            <p className="report-period">
-                              {report.week_start} ~ {report.week_end}
-                            </p>
-                            <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
-                            <div className="report-footer">
-                              {report.ai_model && (
-                                <Tag icon={<RobotOutlined />} color="purple">
-                                  {report.ai_model}
-                                </Tag>
-                              )}
-                              {report.is_reviewed && (
-                                <Tag color="success">已审阅</Tag>
-                              )}
-                            </div>
-                          </Card>
-                        </List.Item>
-                      )}
-                    />
-                  )}
-                </>
-              ),
-            },
-            {
-              key: 'project',
-              label: (
-                <span>
-                  <ProjectOutlined />
-                  项目周报
-                </span>
-              ),
-              children: (
-                <>
-                  {/* 筛选条件 */}
-                  <div style={{ marginBottom: 16 }}>
-                    <Select
-                      placeholder="按项目筛选"
-                      allowClear
-                      style={{ width: 200 }}
-                      value={filterProjectId}
-                      onChange={setFilterProjectId}
-                    >
-                      {projects.map(p => (
-                        <Select.Option key={p.id} value={p.id}>[{p.code}] {p.name}</Select.Option>
-                      ))}
-                    </Select>
-                  </div>
-                  {/* 周报列表 */}
-                  {filteredReports.length === 0 ? (
-                    <Empty
-                      image={Empty.PRESENTED_IMAGE_SIMPLE}
-                      description="暂无项目周报"
-                    >
-                      {isAdmin && (
-                        <Button 
-                          type="primary" 
-                          icon={<PlusOutlined />}
-                          onClick={() => {
-                            form.setFieldValue('report_type', 'project')
-                            setGenerateModalOpen(true)
-                          }}
+                )
+              }
+              return info.originNode
+            }}
+          />
+          {/* 选中周的提示 */}
+          {selectedWeekStart && selectedWeekEnd && (
+            <div className="selected-week-info">
+              <span>
+                已选择: {selectedWeekStart} ~ {selectedWeekEnd}
+              </span>
+              <Button type="link" size="small" onClick={clearWeekFilter}>
+                清除筛选
+              </Button>
+            </div>
+          )}
+          {/* 图例说明 */}
+          <div className="calendar-legend">
+            <div className="legend-item">
+              <Badge color="#3B82F6" /> 个人周报
+            </div>
+            <div className="legend-item">
+              <Badge color="#10B981" /> 项目周报
+            </div>
+          </div>
+        </div>
+
+        {/* 右侧周报列表 */}
+        <div className="reports-section">
+          <Card>
+            <Tabs
+              activeKey={activeTab}
+              onChange={(key) => {
+                setActiveTab(key as 'personal' | 'project')
+                // 切换 Tab 时清空成员/项目筛选，但保留周筛选
+                setFilterMemberId(undefined)
+                setFilterProjectId(undefined)
+              }}
+              items={[
+                {
+                  key: 'personal',
+                  label: (
+                    <span>
+                      <UserOutlined />
+                      个人周报
+                    </span>
+                  ),
+                  children: (
+                    <>
+                      {/* 筛选条件 */}
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+                        <Select
+                          placeholder="按成员筛选"
+                          allowClear
+                          style={{ width: 200 }}
+                          value={filterMemberId}
+                          onChange={setFilterMemberId}
                         >
-                          生成项目周报
-                        </Button>
-                      )}
-                    </Empty>
-                  ) : (
-                    <List
-                      grid={{ gutter: 24, xs: 1, sm: 2, md: 2, lg: 3, xl: 3 }}
-                      dataSource={filteredReports}
-                      renderItem={(report) => (
-                        <List.Item>
-                          <Card 
-                            className="report-card"
-                            hoverable
-                            onClick={() => openDetail(report)}
+                          {members.map(m => (
+                            <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                          ))}
+                        </Select>
+                        {selectedWeekStart && (
+                          <Tag 
+                            closable 
+                            onClose={clearWeekFilter}
+                            color="blue"
                           >
-                            <div className="report-header">
-                              <Tag color="green">项目周报</Tag>
-                              <span className="report-date">
-                                {dayjs(report.generated_at).format('YYYY-MM-DD HH:mm')}
-                              </span>
-                            </div>
-                            <h3 className="report-title">
-                              {report.project?.name} 周报
-                            </h3>
-                            <p className="report-period">
-                              {report.week_start} ~ {report.week_end}
-                            </p>
-                            <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
-                            <div className="report-footer">
-                              {report.ai_model && (
-                                <Tag icon={<RobotOutlined />} color="purple">
-                                  {report.ai_model}
-                                </Tag>
-                              )}
-                              {report.is_reviewed && (
-                                <Tag color="success">已审阅</Tag>
-                              )}
-                            </div>
-                          </Card>
-                        </List.Item>
+                            {selectedWeekStart} ~ {selectedWeekEnd}
+                          </Tag>
+                        )}
+                      </div>
+                      {/* 周报列表 */}
+                      {filteredReports.length === 0 ? (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={selectedWeekStart ? "该周暂无个人周报" : "暂无个人周报"}
+                        >
+                          <Button 
+                            type="primary" 
+                            icon={<PlusOutlined />}
+                            onClick={() => {
+                              form.setFieldValue('report_type', 'personal')
+                              setGenerateModalOpen(true)
+                            }}
+                          >
+                            生成个人周报
+                          </Button>
+                        </Empty>
+                      ) : (
+                        <List
+                          grid={{ gutter: 24, xs: 1, sm: 1, md: 2, lg: 2, xl: 2 }}
+                          dataSource={filteredReports}
+                          renderItem={(report) => (
+                            <List.Item>
+                              <Card 
+                                className={`report-card ${selectedWeekStart === report.week_start ? 'active' : ''}`}
+                                hoverable
+                                onClick={() => handleReportCardClick(report)}
+                              >
+                                <div className="report-header">
+                                  <Tag color="blue">个人周报</Tag>
+                                  <span className="report-date">
+                                    {dayjs(report.generated_at).format('YYYY-MM-DD HH:mm')}
+                                  </span>
+                                </div>
+                                <h3 className="report-title">
+                                  {report.member?.name} 的周报
+                                </h3>
+                                <p className="report-period">
+                                  {report.week_start} ~ {report.week_end}
+                                </p>
+                                <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
+                                <div className="report-footer">
+                                  {report.ai_model && (
+                                    <Tag icon={<RobotOutlined />} color="purple">
+                                      {report.ai_model}
+                                    </Tag>
+                                  )}
+                                  {report.is_reviewed && (
+                                    <Tag color="success">已审阅</Tag>
+                                  )}
+                                </div>
+                              </Card>
+                            </List.Item>
+                          )}
+                        />
                       )}
-                    />
-                  )}
-                </>
-              ),
-            },
-          ]}
-        />
-      </Card>
+                    </>
+                  ),
+                },
+                {
+                  key: 'project',
+                  label: (
+                    <span>
+                      <ProjectOutlined />
+                      项目周报
+                    </span>
+                  ),
+                  children: (
+                    <>
+                      {/* 筛选条件 */}
+                      <div style={{ marginBottom: 16, display: 'flex', gap: 8 }}>
+                        <Select
+                          placeholder="按项目筛选"
+                          allowClear
+                          style={{ width: 200 }}
+                          value={filterProjectId}
+                          onChange={setFilterProjectId}
+                        >
+                          {projects.map(p => (
+                            <Select.Option key={p.id} value={p.id}>[{p.code}] {p.name}</Select.Option>
+                          ))}
+                        </Select>
+                        {selectedWeekStart && (
+                          <Tag 
+                            closable 
+                            onClose={clearWeekFilter}
+                            color="green"
+                          >
+                            {selectedWeekStart} ~ {selectedWeekEnd}
+                          </Tag>
+                        )}
+                      </div>
+                      {/* 周报列表 */}
+                      {filteredReports.length === 0 ? (
+                        <Empty
+                          image={Empty.PRESENTED_IMAGE_SIMPLE}
+                          description={selectedWeekStart ? "该周暂无项目周报" : "暂无项目周报"}
+                        >
+                          {isAdmin && (
+                            <Button 
+                              type="primary" 
+                              icon={<PlusOutlined />}
+                              onClick={() => {
+                                form.setFieldValue('report_type', 'project')
+                                setGenerateModalOpen(true)
+                              }}
+                            >
+                              生成项目周报
+                            </Button>
+                          )}
+                        </Empty>
+                      ) : (
+                        <List
+                          grid={{ gutter: 24, xs: 1, sm: 1, md: 2, lg: 2, xl: 2 }}
+                          dataSource={filteredReports}
+                          renderItem={(report) => (
+                            <List.Item>
+                              <Card 
+                                className={`report-card ${selectedWeekStart === report.week_start ? 'active' : ''}`}
+                                hoverable
+                                onClick={() => handleReportCardClick(report)}
+                              >
+                                <div className="report-header">
+                                  <Tag color="green">项目周报</Tag>
+                                  <span className="report-date">
+                                    {dayjs(report.generated_at).format('YYYY-MM-DD HH:mm')}
+                                  </span>
+                                </div>
+                                <h3 className="report-title">
+                                  {report.project?.name} 周报
+                                </h3>
+                                <p className="report-period">
+                                  {report.week_start} ~ {report.week_end}
+                                </p>
+                                <p className="report-summary">{report.summary?.trim() || '点击查看详情'}</p>
+                                <div className="report-footer">
+                                  {report.ai_model && (
+                                    <Tag icon={<RobotOutlined />} color="purple">
+                                      {report.ai_model}
+                                    </Tag>
+                                  )}
+                                  {report.is_reviewed && (
+                                    <Tag color="success">已审阅</Tag>
+                                  )}
+                                </div>
+                              </Card>
+                            </List.Item>
+                          )}
+                        />
+                      )}
+                    </>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </div>
+      </div>
 
       {/* 生成周报弹窗 */}
       <Modal
@@ -480,7 +642,7 @@ export default function Weekly() {
             name="week"
             label="选择周"
             rules={[{ required: true, message: '请选择周' }]}
-            initialValue={dayjs().startOf('week')}
+            initialValue={dayjs().startOf('isoWeek')}
           >
             <DatePicker picker="week" style={{ width: '100%' }} />
           </Form.Item>
@@ -547,28 +709,28 @@ export default function Weekly() {
                 </h2>
 
                 <div className="report-section">
-                  <h4>📝 本周总结</h4>
+                  <h4>本周总结</h4>
                   <p style={{ whiteSpace: 'pre-wrap' }}>
                     {(selectedReport.edited_summary || selectedReport.summary)?.trim() || '暂无内容'}
                   </p>
                 </div>
 
                 <div className="report-section">
-                  <h4>✅ 主要成果</h4>
+                  <h4>主要成果</h4>
                   <p style={{ whiteSpace: 'pre-wrap' }}>
                     {(selectedReport.edited_achievements || selectedReport.achievements)?.trim() || '暂无内容'}
                   </p>
                 </div>
 
                 <div className="report-section">
-                  <h4>⚠️ 问题与挑战</h4>
+                  <h4>问题与挑战</h4>
                   <p style={{ whiteSpace: 'pre-wrap' }}>
                     {(selectedReport.edited_issues || selectedReport.issues)?.trim() || '暂无问题'}
                   </p>
                 </div>
 
                 <div className="report-section">
-                  <h4>📅 下周计划</h4>
+                  <h4>下周计划</h4>
                   <p style={{ whiteSpace: 'pre-wrap' }}>
                     {(selectedReport.edited_next_week_plan || selectedReport.next_week_plan)?.trim() || '暂无计划'}
                   </p>

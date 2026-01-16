@@ -2,8 +2,111 @@
   max-width: 100%;
 }
 
+/* 主内容区域 - 左右布局 */
+.weekly-content {
+  display: flex;
+  gap: var(--spacing-lg);
+  margin-top: var(--spacing-lg);
+}
+
+/* 左侧日历区域 */
+.calendar-section {
+  width: 320px;
+  flex-shrink: 0;
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+  box-shadow: var(--shadow-sm);
+  height: fit-content;
+  position: sticky;
+  top: var(--spacing-lg);
+}
+
+.calendar-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gray-800);
+  margin-bottom: var(--spacing-md);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+/* 日历单元格 */
+.calendar-cell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.calendar-cell.selected-week {
+  background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%);
+  border-radius: 4px;
+  margin: -2px;
+  padding: 2px;
+}
+
+.calendar-cell.selected-week .ant-picker-cell-inner {
+  color: white !important;
+}
+
+/* 日历周标记 */
+.calendar-week-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+}
+
+/* 选中周的信息提示 */
+.selected-week-info {
+  margin-top: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--primary-50);
+  border-radius: var(--radius-md);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--primary-700);
+}
+
+/* 日历图例 */
+.calendar-legend {
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--gray-100);
+  display: flex;
+  gap: var(--spacing-lg);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  font-size: 12px;
+  color: var(--gray-600);
+}
+
+/* 右侧周报列表区域 */
+.reports-section {
+  flex: 1;
+  min-width: 0;
+}
+
+/* 周报卡片 */
 .report-card {
   height: 100%;
+  transition: all 0.2s ease;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.report-card.active {
+  border-color: var(--primary-500);
+  box-shadow: 0 0 0 2px var(--primary-100);
 }
 
 .report-card .ant-card-body {
@@ -94,4 +197,57 @@
   border-top: 1px solid var(--gray-100);
   font-size: 13px;
   color: var(--gray-500);
+}
+
+/* 日历组件调整 */
+.calendar-section .ant-picker-calendar {
+  background: transparent;
+}
+
+.calendar-section .ant-picker-calendar-header {
+  padding: 0 0 var(--spacing-sm) 0;
+}
+
+.calendar-section .ant-picker-calendar .ant-picker-cell {
+  padding: 4px 0;
+}
+
+.calendar-section .ant-picker-calendar .ant-picker-cell-inner {
+  min-width: 28px;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 4px;
+}
+
+/* 选中周的日期高亮 */
+.calendar-section .ant-picker-calendar .ant-picker-cell.selected-week-cell .ant-picker-cell-inner {
+  background: var(--primary-100) !important;
+  color: var(--primary-700) !important;
+}
+
+/* 自定义周高亮样式 */
+.calendar-section .ant-picker-calendar-date {
+  position: relative;
+}
+
+/* 响应式布局 */
+@media (max-width: 1024px) {
+  .weekly-content {
+    flex-direction: column;
+  }
+  
+  .calendar-section {
+    width: 100%;
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-section {
+    padding: var(--spacing-md);
+  }
+  
+  .report-card .ant-card-body {
+    padding: var(--spacing-md);
+  }
 }
