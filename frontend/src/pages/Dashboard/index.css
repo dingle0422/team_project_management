@@ -44,6 +44,36 @@
   text-align: center;
 }
 
+/* 类型筛选器 */
+.recent-items-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.recent-items-filter .filter-tag {
+  cursor: pointer;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  transition: all 0.2s;
+  border: 1px solid var(--gray-200);
+  background: var(--gray-50);
+  color: var(--gray-600);
+}
+
+.recent-items-filter .filter-tag:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.recent-items-filter .filter-tag.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+
 /* 近期事项列表 */
 .recent-items-list {
   max-height: 450px;

@@ -74,6 +74,7 @@ export default function Dashboard() {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set())  // 选中的事项ID
   const [batchMode, setBatchMode] = useState(false)  // 批量处理模式
   const [allMyTasks, setAllMyTasks] = useState<Task[]>([])  // 所有任务缓存
+  const [recentItemFilter, setRecentItemFilter] = useState<RecentItemType | 'all'>('all')  // 事项类型筛选
   
   // 弹窗状态
   const [dailyModalOpen, setDailyModalOpen] = useState(false)
@@ -369,14 +370,18 @@ export default function Dashboard() {
     }
   }
 
-  // 全选/取消全选
+  // 全选/取消全选（基于当前筛选结果）
   const handleSelectAll = () => {
-    if (selectedItems.size === recentItems.length) {
+    const filteredItems = recentItems.filter(item => recentItemFilter === 'all' || item.type === recentItemFilter)
+    if (selectedItems.size === filteredItems.length) {
       setSelectedItems(new Set())
     } else {
-      setSelectedItems(new Set(recentItems.map(item => item.id)))
+      setSelectedItems(new Set(filteredItems.map(item => item.id)))
     }
   }
+  
+  // 获取筛选后的事项列表
+  const filteredRecentItems = recentItems.filter(item => recentItemFilter === 'all' || item.type === recentItemFilter)
 
   // 切换单个选择
   const toggleItemSelection = (itemId: string) => {
@@ -646,19 +651,10 @@ export default function Dashboard() {
     }
   }
   
-  // 格式化相对时间
-  const formatRelativeDate = (dateStr?: string) => {
+  // 格式化日期（直接显示具体日期）
+  const formatItemDate = (dateStr?: string) => {
     if (!dateStr) return ''
-    const date = dayjs(dateStr)
-    const now = dayjs()
-    const diffDays = date.diff(now, 'day')
-    
-    if (date.isSame(now, 'day')) return '今天'
-    if (diffDays === 1) return '明天'
-    if (diffDays === -1) return '昨天'
-    if (diffDays > 0 && diffDays <= 7) return `${diffDays}天后`
-    if (diffDays < 0 && diffDays >= -7) return `${Math.abs(diffDays)}天前`
-    return date.format('M月D日')
+    return dayjs(dateStr).format('M月D日')
   }
 
   const pendingTasks = myTasks.filter(t => 
@@ -717,7 +713,7 @@ export default function Dashboard() {
               {batchMode ? (
                 <>
                   <Button size="small" onClick={handleSelectAll}>
-                    {selectedItems.size === recentItems.length ? '取消全选' : '全选'}
+                    {selectedItems.size === filteredRecentItems.length && filteredRecentItems.length > 0 ? '取消全选' : '全选'}
                   </Button>
                   <Button 
                     size="small" 
@@ -767,14 +763,52 @@ export default function Dashboard() {
             )}
           </div>
           
+          {/* 类型筛选器 */}
+          <div className="recent-items-filter">
+            <Tag 
+              className={`filter-tag ${recentItemFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setRecentItemFilter('all')}
+            >
+              全部
+            </Tag>
+            <Tag 
+              className={`filter-tag ${recentItemFilter === 'task_start' ? 'active' : ''}`}
+              onClick={() => setRecentItemFilter('task_start')}
+              color={recentItemFilter === 'task_start' ? '#3B82F6' : undefined}
+            >
+              待完成
+            </Tag>
+            <Tag 
+              className={`filter-tag ${recentItemFilter === 'task_due' ? 'active' : ''}`}
+              onClick={() => setRecentItemFilter('task_due')}
+              color={recentItemFilter === 'task_due' ? '#DC2626' : undefined}
+            >
+              到期预警
+            </Tag>
+            <Tag 
+              className={`filter-tag ${recentItemFilter === 'approval' ? 'active' : ''}`}
+              onClick={() => setRecentItemFilter('approval')}
+              color={recentItemFilter === 'approval' ? '#D97706' : undefined}
+            >
+              审核提醒
+            </Tag>
+            <Tag 
+              className={`filter-tag ${recentItemFilter === 'mention' ? 'active' : ''}`}
+              onClick={() => setRecentItemFilter('mention')}
+              color={recentItemFilter === 'mention' ? '#8B5CF6' : undefined}
+            >
+              消息提醒
+            </Tag>
+          </div>
+          
           <div className="recent-items-list">
-            {recentItems.length === 0 ? (
+            {filteredRecentItems.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">🎉</div>
-                <div className="empty-state-text">该时间段暂无事项</div>
+                <div className="empty-state-text">{recentItemFilter === 'all' ? '该时间段暂无事项' : '暂无该类型事项'}</div>
               </div>
             ) : (
-              recentItems.map(item => {
+              filteredRecentItems.map(item => {
                 const tagConfig = getRecentItemTag(item.type)
                 return (
                   <div 
@@ -814,7 +848,7 @@ export default function Dashboard() {
                         </Tag>
                         {item.date && (
                           <span className="recent-item-date">
-                            {formatRelativeDate(item.date)}
+                            {formatItemDate(item.date)}
                           </span>
                         )}
                       </div>
