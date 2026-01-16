@@ -244,10 +244,10 @@ export default function Projects() {
                 </span>
               </div>
               <Progress 
-                percent={30} 
+                percent={project.task_stats?.total ? Math.round((project.task_stats.completed / project.task_stats.total) * 100) : 0} 
                 size="small" 
                 strokeColor="#F59E0B"
-                format={() => '3/10'}
+                format={() => `${project.task_stats?.completed || 0}/${project.task_stats?.total || 0}`}
               />
             </Card>
           </Col>

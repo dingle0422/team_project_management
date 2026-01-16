@@ -16,6 +16,13 @@ export interface MemberBrief {
   avatar_url?: string
 }
 
+// 任务统计类型
+export interface TaskStats {
+  total: number
+  completed: number
+  in_progress: number
+}
+
 // 项目类型
 export interface Project {
   id: number
@@ -30,6 +37,7 @@ export interface Project {
   owner?: MemberBrief
   created_by?: number  // 创建者ID
   creator?: MemberBrief  // 创建者信息
+  task_stats?: TaskStats  // 任务统计
   created_at: string
   updated_at: string
 }

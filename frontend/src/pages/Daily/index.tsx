@@ -4,7 +4,7 @@ import {
   message, Spin, Calendar, Badge, List, Avatar, Tag 
 } from 'antd'
 import type { BadgeProps, CalendarProps } from 'antd'
-import { PlusOutlined, CalendarOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { PlusOutlined, CalendarOutlined, EditOutlined, DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import dayjs, { Dayjs } from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
@@ -35,7 +35,9 @@ export default function Daily() {
   const [summaries, setSummaries] = useState<DailySummary[]>([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editModalOpen, setEditModalOpen] = useState(false)
+  const [detailModalOpen, setDetailModalOpen] = useState(false)
   const [editingLog, setEditingLog] = useState<DailyWorkLog | null>(null)
+  const [selectedLog, setSelectedLog] = useState<DailyWorkLog | null>(null)
   const [form] = Form.useForm()
   const [editForm] = Form.useForm()
 
@@ -105,6 +107,20 @@ export default function Daily() {
     }
   }
 
+  // 查看日报详情
+  const openLogDetail = (log: DailyWorkLog) => {
+    setSelectedLog(log)
+    setDetailModalOpen(true)
+  }
+
+  // 编辑日志（从详情弹窗）
+  const handleEditFromDetail = () => {
+    if (selectedLog) {
+      setDetailModalOpen(false)
+      handleEditLog(selectedLog)
+    }
+  }
+
   // 编辑日志
   const handleEditLog = (log: DailyWorkLog) => {
     setEditingLog(log)
@@ -142,6 +158,8 @@ export default function Daily() {
     try {
       await dailyLogsApi.deleteLog(logId)
       message.success('日志已删除')
+      setDetailModalOpen(false)
+      setSelectedLog(null)
       loadData()
     } catch {
       message.error('删除失败')
@@ -310,24 +328,8 @@ export default function Daily() {
                   dataSource={selectedDateLogs}
                   renderItem={(log) => (
                     <List.Item
-                      actions={[
-                        <Button 
-                          key="edit" 
-                          type="text" 
-                          icon={<EditOutlined />}
-                          onClick={() => handleEditLog(log)}
-                        />,
-                        <Popconfirm
-                          key="delete"
-                          title="确认删除"
-                          description="确定要删除这条工时记录吗？"
-                          onConfirm={() => handleDeleteLog(log.id)}
-                          okText="确认"
-                          cancelText="取消"
-                        >
-                          <Button type="text" danger icon={<DeleteOutlined />} />
-                        </Popconfirm>
-                      ]}
+                      className="log-list-item clickable"
+                      onClick={() => openLogDetail(log)}
                     >
                       <List.Item.Meta
                         avatar={
@@ -448,11 +450,16 @@ export default function Daily() {
                         </div>
                         <div className="day-group-logs">
                           {dayLogs.map(log => (
-                            <div key={log.id} className="mini-log-item">
+                            <div 
+                              key={log.id} 
+                              className="mini-log-item clickable"
+                              onClick={() => openLogDetail(log)}
+                            >
                               <Tag color={WORK_TYPE_CONFIG[log.work_type]?.color} style={{ marginRight: 8 }}>
                                 {log.hours}h
                               </Tag>
                               <span className="mini-log-task">{log.task?.title || '未关联任务'}</span>
+                              <EyeOutlined className="view-icon" />
                             </div>
                           ))}
                         </div>
@@ -465,6 +472,89 @@ export default function Daily() {
           )}
         </div>
       </div>
+
+      {/* 日报详情弹窗 */}
+      <Modal
+        title={null}
+        open={detailModalOpen}
+        onCancel={() => { setDetailModalOpen(false); setSelectedLog(null); }}
+        footer={null}
+        width={600}
+      >
+        {selectedLog && (
+          <div className="log-detail">
+            {/* 头部操作栏 */}
+            <div className="log-detail-header">
+              <div className="log-detail-title">
+                <Tag color={WORK_TYPE_CONFIG[selectedLog.work_type]?.color}>
+                  {WORK_TYPE_CONFIG[selectedLog.work_type]?.label}
+                </Tag>
+                <span className="log-detail-date">
+                  {dayjs(selectedLog.work_date).format('YYYY年M月D日')}
+                </span>
+              </div>
+              <div className="log-detail-actions">
+                <Button icon={<EditOutlined />} onClick={handleEditFromDetail}>
+                  编辑
+                </Button>
+                <Popconfirm
+                  title="确认删除"
+                  description="确定要删除这条工时记录吗？此操作不可撤销。"
+                  onConfirm={() => handleDeleteLog(selectedLog.id)}
+                  okText="确认"
+                  cancelText="取消"
+                >
+                  <Button danger icon={<DeleteOutlined />}>删除</Button>
+                </Popconfirm>
+              </div>
+            </div>
+
+            {/* 任务信息 */}
+            <div className="log-detail-section">
+              <h4>关联任务</h4>
+              <div className="log-detail-task">
+                <span className="task-name">{selectedLog.task?.title || '未关联任务'}</span>
+                {selectedLog.project && (
+                  <Tag color="blue">{selectedLog.project.name}</Tag>
+                )}
+              </div>
+            </div>
+
+            {/* 工时信息 */}
+            <div className="log-detail-section">
+              <h4>工作时长</h4>
+              <div className="log-detail-hours">
+                <Avatar 
+                  size={48}
+                  style={{ 
+                    background: WORK_TYPE_CONFIG[selectedLog.work_type]?.color,
+                    fontSize: 18,
+                    fontWeight: 600
+                  }}
+                >
+                  {selectedLog.hours}h
+                </Avatar>
+              </div>
+            </div>
+
+            {/* 工作内容 */}
+            <div className="log-detail-section">
+              <h4>工作内容</h4>
+              <p className="log-detail-content">
+                {selectedLog.description || '暂无描述'}
+              </p>
+            </div>
+
+            {/* 记录信息 */}
+            <div className="log-detail-meta">
+              <span>记录时间: {dayjs(selectedLog.created_at).format('YYYY-MM-DD HH:mm')}</span>
+              {selectedLog.member && (
+                <span>记录人: {selectedLog.member.name}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* 填写日报弹窗 */}
       <Modal

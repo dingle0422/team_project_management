@@ -591,22 +591,33 @@ export default function Tasks() {
                       </Tag>
                     )}
                     {canEdit() && (
-                      <Button icon={<EditOutlined />} onClick={startEditing}>
-                        编辑
-                      </Button>
+                      <Tooltip title={selectedTask.pending_approval ? '有待审批的状态变更，请等待审批完成或取消申请' : ''}>
+                        <Button 
+                          icon={<EditOutlined />} 
+                          onClick={startEditing}
+                          disabled={!!selectedTask.pending_approval}
+                        >
+                          编辑
+                        </Button>
+                      </Tooltip>
                     )}
                     {canDelete() && (
-                      <Popconfirm
-                        title="确认删除"
-                        description="确定要删除这个任务吗？此操作不可撤销。"
-                        onConfirm={handleDelete}
-                        okText="确认"
-                        cancelText="取消"
-                      >
-                        <Button danger icon={<DeleteOutlined />}>
-                          删除
-                        </Button>
-                      </Popconfirm>
+                      <Tooltip title={selectedTask.pending_approval ? '有待审批的状态变更，请等待审批完成或取消申请' : ''}>
+                        <span>
+                          <Popconfirm
+                            title="确认删除"
+                            description="确定要删除这个任务吗？此操作不可撤销。"
+                            onConfirm={handleDelete}
+                            okText="确认"
+                            cancelText="取消"
+                            disabled={!!selectedTask.pending_approval}
+                          >
+                            <Button danger icon={<DeleteOutlined />} disabled={!!selectedTask.pending_approval}>
+                              删除
+                            </Button>
+                          </Popconfirm>
+                        </span>
+                      </Tooltip>
                     )}
                   </div>
                 </div>

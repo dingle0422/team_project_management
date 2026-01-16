@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, message, Spin } from 'antd'
-import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined } from '@ant-design/icons'
+import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar } from 'antd'
+import { PlusOutlined, EditOutlined, CalendarOutlined, EyeOutlined, DeleteOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
@@ -10,6 +10,16 @@ import type { Task, DailyWorkLog, Meeting } from '@/types'
 import './index.css'
 
 const { TextArea } = Input
+
+// 工作类型配置
+const WORK_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
+  development: { label: '开发', color: '#3B82F6' },
+  design: { label: '设计', color: '#8B5CF6' },
+  testing: { label: '测试', color: '#10B981' },
+  meeting: { label: '会议', color: '#F59E0B' },
+  research: { label: '研究', color: '#EC4899' },
+  other: { label: '其他', color: '#6B7280' },
+}
 
 // 获取问候语
 const getGreeting = () => {
@@ -34,13 +44,17 @@ export default function Dashboard() {
   const [todayLogs, setTodayLogs] = useState<DailyWorkLog[]>([])
   const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([])
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
+  const [selectedLog, setSelectedLog] = useState<DailyWorkLog | null>(null)
   
   // 弹窗状态
   const [dailyModalOpen, setDailyModalOpen] = useState(false)
   const [meetingModalOpen, setMeetingModalOpen] = useState(false)
   const [meetingDetailModalOpen, setMeetingDetailModalOpen] = useState(false)
+  const [logDetailModalOpen, setLogDetailModalOpen] = useState(false)
+  const [editLogModalOpen, setEditLogModalOpen] = useState(false)
   const [dailyForm] = Form.useForm()
   const [meetingForm] = Form.useForm()
+  const [editLogForm] = Form.useForm()
 
   useEffect(() => {
     loadData()
@@ -114,6 +128,60 @@ export default function Dashboard() {
       loadData()
     } catch (error) {
       message.error('提交失败')
+    }
+  }
+
+  // 查看日报详情
+  const openLogDetail = (log: DailyWorkLog) => {
+    setSelectedLog(log)
+    setLogDetailModalOpen(true)
+  }
+
+  // 编辑日报（从详情弹窗）
+  const handleEditFromDetail = () => {
+    if (selectedLog) {
+      setLogDetailModalOpen(false)
+      editLogForm.setFieldsValue({
+        task_id: selectedLog.task_id,
+        hours: selectedLog.hours,
+        description: selectedLog.description,
+        work_type: selectedLog.work_type,
+      })
+      setEditLogModalOpen(true)
+    }
+  }
+
+  // 保存编辑
+  const handleSaveEditLog = async (values: {
+    task_id: number
+    hours: number
+    description: string
+    work_type: string
+  }) => {
+    if (!selectedLog) return
+    try {
+      await dailyLogsApi.updateLog(selectedLog.id, values)
+      message.success('日志已更新')
+      setEditLogModalOpen(false)
+      setSelectedLog(null)
+      editLogForm.resetFields()
+      loadData()
+    } catch {
+      message.error('更新失败')
+    }
+  }
+
+  // 删除日报
+  const handleDeleteLog = async () => {
+    if (!selectedLog) return
+    try {
+      await dailyLogsApi.deleteLog(selectedLog.id)
+      message.success('日志已删除')
+      setLogDetailModalOpen(false)
+      setSelectedLog(null)
+      loadData()
+    } catch {
+      message.error('删除失败')
     }
   }
 
@@ -289,17 +357,21 @@ export default function Dashboard() {
           {todayLogs.length > 0 && (
             <div className="today-logs" style={{ marginTop: 16 }}>
               {todayLogs.map(log => (
-                <div key={log.id} className="log-item">
-                  <div className="log-task">{log.task?.title}</div>
-                  <div className="log-meta">
-                    <span>{log.hours}h</span>
-                    <span>{log.description}</span>
+                <div 
+                  key={log.id} 
+                  className="log-item clickable"
+                  onClick={() => openLogDetail(log)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="log-item-header">
+                    <Tag color={WORK_TYPE_CONFIG[log.work_type]?.color}>
+                      {log.hours}h
+                    </Tag>
+                    <span className="log-task">{log.task?.title}</span>
                   </div>
-                  {log.member && (
-                    <div className="log-creator" style={{ fontSize: 12, color: '#9CA3AF', marginTop: 4 }}>
-                      👤 {log.member.name}
-                    </div>
-                  )}
+                  <div className="log-meta">
+                    <span className="log-desc-preview">{log.description}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -426,6 +498,149 @@ export default function Dashboard() {
               提交日报
             </Button>
           </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* 日报详情弹窗 */}
+      <Modal
+        title={null}
+        open={logDetailModalOpen}
+        onCancel={() => { setLogDetailModalOpen(false); setSelectedLog(null); }}
+        footer={null}
+        width={600}
+      >
+        {selectedLog && (
+          <div className="log-detail">
+            {/* 头部操作栏 */}
+            <div className="log-detail-header">
+              <div className="log-detail-title">
+                <Tag color={WORK_TYPE_CONFIG[selectedLog.work_type]?.color}>
+                  {WORK_TYPE_CONFIG[selectedLog.work_type]?.label}
+                </Tag>
+                <span className="log-detail-date">
+                  {dayjs(selectedLog.work_date).format('YYYY年M月D日')}
+                </span>
+              </div>
+              <div className="log-detail-actions">
+                <Button icon={<EditOutlined />} onClick={handleEditFromDetail}>
+                  编辑
+                </Button>
+                <Popconfirm
+                  title="确认删除"
+                  description="确定要删除这条工时记录吗？此操作不可撤销。"
+                  onConfirm={handleDeleteLog}
+                  okText="确认"
+                  cancelText="取消"
+                >
+                  <Button danger icon={<DeleteOutlined />}>删除</Button>
+                </Popconfirm>
+              </div>
+            </div>
+
+            {/* 任务信息 */}
+            <div className="log-detail-section">
+              <h4>关联任务</h4>
+              <div className="log-detail-task">
+                <span className="task-name">{selectedLog.task?.title || '未关联任务'}</span>
+                {selectedLog.project && (
+                  <Tag color="blue">{selectedLog.project.name}</Tag>
+                )}
+              </div>
+            </div>
+
+            {/* 工时信息 */}
+            <div className="log-detail-section">
+              <h4>工作时长</h4>
+              <div className="log-detail-hours">
+                <Avatar 
+                  size={48}
+                  style={{ 
+                    background: WORK_TYPE_CONFIG[selectedLog.work_type]?.color,
+                    fontSize: 18,
+                    fontWeight: 600
+                  }}
+                >
+                  {selectedLog.hours}h
+                </Avatar>
+              </div>
+            </div>
+
+            {/* 工作内容 */}
+            <div className="log-detail-section">
+              <h4>工作内容</h4>
+              <p className="log-detail-content">
+                {selectedLog.description || '暂无描述'}
+              </p>
+            </div>
+
+            {/* 记录信息 */}
+            <div className="log-detail-meta">
+              <span>记录时间: {dayjs(selectedLog.created_at).format('YYYY-MM-DD HH:mm')}</span>
+              {selectedLog.member && (
+                <span>记录人: {selectedLog.member.name}</span>
+              )}
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* 编辑日报弹窗 */}
+      <Modal
+        title="编辑工时记录"
+        open={editLogModalOpen}
+        onCancel={() => { setEditLogModalOpen(false); setSelectedLog(null); editLogForm.resetFields(); }}
+        footer={null}
+        width={500}
+      >
+        <Form form={editLogForm} layout="vertical" onFinish={handleSaveEditLog}>
+          <Form.Item
+            name="task_id"
+            label="关联任务"
+            rules={[{ required: true, message: '请选择任务' }]}
+          >
+            <Select placeholder="选择任务">
+              {availableTasks.map(task => (
+                <Select.Option key={task.id} value={task.id}>
+                  [{task.project?.code}] {task.title}
+                </Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <Form.Item
+              name="hours"
+              label="工作时长"
+              rules={[{ required: true, message: '请输入时长' }]}
+              style={{ flex: 1 }}
+            >
+              <InputNumber min={0.5} max={24} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
+            </Form.Item>
+            <Form.Item
+              name="work_type"
+              label="工作类型"
+              style={{ flex: 1 }}
+            >
+              <Select>
+                <Select.Option value="development">开发</Select.Option>
+                <Select.Option value="design">设计</Select.Option>
+                <Select.Option value="testing">测试</Select.Option>
+                <Select.Option value="meeting">会议</Select.Option>
+                <Select.Option value="research">研究</Select.Option>
+                <Select.Option value="other">其他</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <Form.Item
+            name="description"
+            label="工作内容"
+            rules={[{ required: true, message: '请输入工作内容' }]}
+          >
+            <TextArea rows={3} placeholder="描述今天做了什么..." />
+          </Form.Item>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
+            <Button onClick={() => { setEditLogModalOpen(false); setSelectedLog(null); editLogForm.resetFields(); }}>取消</Button>
+            <Button type="primary" htmlType="submit">保存</Button>
+          </div>
         </Form>
       </Modal>
 
