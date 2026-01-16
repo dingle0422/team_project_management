@@ -23,6 +23,16 @@ class MemberCreate(MemberBase):
     role: str = Field("member", description="角色: admin, manager, member")
 
 
+class MemberRegister(BaseModel):
+    """用户注册"""
+    name: str = Field(..., min_length=1, max_length=50, description="姓名")
+    email: EmailStr = Field(..., description="邮箱")
+    password: str = Field(..., min_length=6, description="密码")
+    invitation_code: str = Field(..., min_length=6, max_length=32, description="邀请码")
+    job_title: Optional[str] = Field(None, max_length=100, description="职位")
+    phone: Optional[str] = Field(None, max_length=20, description="手机号")
+
+
 class MemberUpdate(BaseModel):
     """更新成员"""
     name: Optional[str] = Field(None, min_length=1, max_length=50)

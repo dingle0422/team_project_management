@@ -9,7 +9,7 @@
 
 .login-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
 }
 
 .login-header {
@@ -87,4 +87,27 @@
   border-radius: 4px;
   font-family: monospace;
   color: var(--gray-700);
+}
+
+/* 注册表单特殊样式 */
+.login-card :global(.ant-tabs-nav) {
+  margin-bottom: var(--spacing-lg);
+}
+
+.login-card :global(.ant-tabs-tab) {
+  font-size: 16px;
+  padding: 8px 16px;
+}
+
+.login-card :global(.ant-form-item) {
+  margin-bottom: var(--spacing-md);
+}
+
+/* 邀请码验证状态样式 */
+.login-card :global(.ant-form-item-has-success .ant-input) {
+  border-color: #52c41a;
+}
+
+.login-card :global(.ant-form-item-has-error .ant-input) {
+  border-color: #ff4d4f;
 }

@@ -3,7 +3,7 @@ API V1 路由聚合
 """
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, members, projects, meetings, tasks, daily_logs, weekly_reports, notifications
+from app.api.v1.endpoints import auth, members, projects, meetings, tasks, daily_logs, weekly_reports, notifications, invitation_codes
 
 api_router = APIRouter()
 
@@ -61,4 +61,11 @@ api_router.include_router(
     notifications.router,
     prefix="/notifications",
     tags=["通知管理"]
+)
+
+# 邀请码
+api_router.include_router(
+    invitation_codes.router,
+    prefix="/invitation-codes",
+    tags=["邀请码管理"]
 )

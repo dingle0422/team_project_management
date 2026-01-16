@@ -8,10 +8,12 @@ interface AuthState {
   user: Member | null
   isAuthenticated: boolean
   isLoading: boolean
+  isInitialized: boolean  // 标记初始化是否完成
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   fetchCurrentUser: () => Promise<void>
   setUser: (user: Member) => void
+  initializeAuth: () => Promise<void>  // 初始化认证状态
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -21,6 +23,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: false,
+      isInitialized: false,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true })
@@ -71,6 +74,30 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user: Member) => {
         set({ user })
+      },
+
+      // 应用启动时初始化认证状态
+      initializeAuth: async () => {
+        const { token, user, isInitialized } = get()
+        
+        // 如果已经初始化过，直接返回
+        if (isInitialized) return
+        
+        // 如果有 token 和 user 信息（从持久化存储恢复），设置认证状态
+        if (token && user) {
+          set({ isAuthenticated: true, isInitialized: true })
+          
+          // 后台验证 token 有效性（静默验证，不影响用户体验）
+          try {
+            const response = await authApi.getCurrentUser()
+            set({ user: response.data })
+          } catch {
+            // token 无效，清除登录状态
+            get().logout()
+          }
+        } else {
+          set({ isInitialized: true })
+        }
       },
     }),
     {

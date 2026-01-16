@@ -4,6 +4,7 @@ import type {
   PaginatedResponse, 
   LoginRequest, 
   LoginResponse,
+  RegisterRequest,
   Member,
   Project,
   ProjectDetail,
@@ -12,7 +13,9 @@ import type {
   DailyWorkLog,
   DailySummary,
   WeeklyReport,
-  NotificationListData
+  NotificationListData,
+  InvitationCode,
+  InvitationCodeBrief
 } from '@/types'
 
 // 创建 axios 实例
@@ -55,7 +58,7 @@ export const authApi = {
   login: (data: LoginRequest): Promise<ApiResponse<LoginResponse>> =>
     api.post('/auth/login', data),
   
-  register: (data: { name: string; email: string; password: string }): Promise<ApiResponse<Member>> =>
+  register: (data: RegisterRequest): Promise<ApiResponse<Member>> =>
     api.post('/auth/register', data),
   
   getCurrentUser: (): Promise<ApiResponse<Member>> =>
@@ -63,6 +66,25 @@ export const authApi = {
   
   changePassword: (data: { old_password: string; new_password: string }): Promise<ApiResponse<null>> =>
     api.put('/auth/change-password', data),
+}
+
+// ============ 邀请码相关 ============
+export const invitationCodesApi = {
+  // 生成邀请码（仅管理员）
+  generate: (data?: { expires_in_days?: number }): Promise<ApiResponse<InvitationCodeBrief>> =>
+    api.post('/invitation-codes/generate', data || {}),
+  
+  // 获取邀请码列表（仅管理员）
+  getList: (params?: { page?: number; page_size?: number; is_used?: boolean }): Promise<PaginatedResponse<InvitationCode>> =>
+    api.get('/invitation-codes', { params }),
+  
+  // 验证邀请码（公开接口）
+  validate: (code: string): Promise<ApiResponse<{ valid: boolean; reason?: string }>> =>
+    api.post('/invitation-codes/validate', { code }),
+  
+  // 删除邀请码（仅管理员）
+  delete: (id: number): Promise<ApiResponse<null>> =>
+    api.delete(`/invitation-codes/${id}`),
 }
 
 // ============ 成员相关 ============

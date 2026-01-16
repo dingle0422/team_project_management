@@ -310,3 +310,34 @@
   border-left: 3px solid #3B82F6;
   background: #EFF6FF;
 }
+
+/* 管理员专属区域 */
+.admin-section {
+  background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 10%, #FFFFFF 10%);
+  border: 1px solid #FCD34D;
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-lg);
+}
+
+.admin-section .section-header {
+  margin-bottom: var(--spacing-lg);
+}
+
+.admin-section .section-header h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  color: #92400E;
+}
+
+.admin-section :global(.ant-table) {
+  background: transparent;
+}
+
+.admin-section :global(.ant-table-thead > tr > th) {
+  background: rgba(254, 243, 199, 0.5);
+}
+
+.admin-section :global(.ant-table-tbody > tr:hover > td) {
+  background: rgba(254, 243, 199, 0.3);
+}

@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar, Checkbox } from 'antd'
-import { PlusOutlined, EditOutlined, CalendarOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons'
+import { Button, Modal, Form, Input, Select, InputNumber, DatePicker, Popconfirm, message, Spin, Tag, Avatar, Checkbox, Table, Tooltip } from 'antd'
+import { PlusOutlined, EditOutlined, CalendarOutlined, DeleteOutlined, BellOutlined, CheckCircleOutlined, ClockCircleOutlined, ExclamationCircleOutlined, LeftOutlined, RightOutlined, KeyOutlined, CopyOutlined } from '@ant-design/icons'
 import dayjs from 'dayjs'
 import isoWeek from 'dayjs/plugin/isoWeek'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
-import { tasksApi, dailyLogsApi, meetingsApi, notificationsApi } from '@/services/api'
-import type { Task, DailyWorkLog, Meeting, DailySummary, Notification, TaskDetail } from '@/types'
+import { tasksApi, dailyLogsApi, meetingsApi, notificationsApi, invitationCodesApi } from '@/services/api'
+import type { Task, DailyWorkLog, Meeting, DailySummary, Notification, TaskDetail, InvitationCode } from '@/types'
 import './index.css'
 
 // 扩展 dayjs 以支持 ISO 周
@@ -86,6 +86,13 @@ export default function Dashboard() {
   const [meetingForm] = Form.useForm()
   const [editLogForm] = Form.useForm()
   const [editMeetingForm] = Form.useForm()
+  
+  // 邀请码管理状态（仅管理员）
+  const [invitationCodes, setInvitationCodes] = useState<InvitationCode[]>([])
+  const [invitationCodesLoading, setInvitationCodesLoading] = useState(false)
+  const [generatingCode, setGeneratingCode] = useState(false)
+  const [invitationModalOpen, setInvitationModalOpen] = useState(false)
+  const [newCode, setNewCode] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
@@ -147,10 +154,62 @@ export default function Dashboard() {
       
       // 加载近期事项
       await loadRecentItems(tasksData)
+      
+      // 如果是管理员，加载邀请码列表
+      const currentUser = useAuthStore.getState().user
+      if (currentUser?.role === 'admin') {
+        loadInvitationCodes()
+      }
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // 加载邀请码列表（仅管理员）
+  const loadInvitationCodes = async () => {
+    setInvitationCodesLoading(true)
+    try {
+      const res = await invitationCodesApi.getList({ page_size: 50 })
+      setInvitationCodes(res.data.items)
+    } catch (error) {
+      console.error('Failed to load invitation codes:', error)
+    } finally {
+      setInvitationCodesLoading(false)
+    }
+  }
+
+  // 生成邀请码
+  const handleGenerateCode = async (expiresInDays?: number) => {
+    setGeneratingCode(true)
+    try {
+      const res = await invitationCodesApi.generate(expiresInDays ? { expires_in_days: expiresInDays } : undefined)
+      setNewCode(res.data.code)
+      setInvitationModalOpen(true)
+      loadInvitationCodes()
+      message.success('邀请码生成成功')
+    } catch (error) {
+      message.error('生成邀请码失败')
+    } finally {
+      setGeneratingCode(false)
+    }
+  }
+
+  // 复制邀请码
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    message.success('邀请码已复制到剪贴板')
+  }
+
+  // 删除邀请码
+  const handleDeleteInvitationCode = async (id: number) => {
+    try {
+      await invitationCodesApi.delete(id)
+      message.success('邀请码已删除')
+      loadInvitationCodes()
+    } catch (error) {
+      message.error('删除失败')
     }
   }
 
@@ -879,6 +938,159 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* 管理员专属区域 - 邀请码管理 */}
+      {user?.role === 'admin' && (
+        <div className="dashboard-section admin-section" style={{ marginTop: 24 }}>
+          <div className="section-header">
+            <h2><KeyOutlined /> 邀请码管理</h2>
+            <Button 
+              type="primary" 
+              icon={<PlusOutlined />}
+              loading={generatingCode}
+              onClick={() => handleGenerateCode()}
+            >
+              生成邀请码
+            </Button>
+          </div>
+          
+          <div style={{ background: '#FFFBEB', padding: '12px 16px', borderRadius: 8, marginBottom: 16, fontSize: 13, color: '#92400E' }}>
+            <strong>提示：</strong>邀请码用于新用户注册，每个邀请码只能使用一次。生成后请及时发送给需要注册的用户。
+          </div>
+          
+          <Table
+            dataSource={invitationCodes}
+            loading={invitationCodesLoading}
+            rowKey="id"
+            size="small"
+            pagination={{ pageSize: 10 }}
+            columns={[
+              {
+                title: '邀请码',
+                dataIndex: 'code',
+                key: 'code',
+                render: (code: string) => (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <code style={{ 
+                      background: '#F3F4F6', 
+                      padding: '4px 8px', 
+                      borderRadius: 4,
+                      fontFamily: 'monospace',
+                      letterSpacing: 1
+                    }}>
+                      {code}
+                    </code>
+                    <Tooltip title="复制邀请码">
+                      <Button 
+                        type="text" 
+                        size="small" 
+                        icon={<CopyOutlined />}
+                        onClick={() => handleCopyCode(code)}
+                      />
+                    </Tooltip>
+                  </div>
+                ),
+              },
+              {
+                title: '状态',
+                dataIndex: 'is_used',
+                key: 'is_used',
+                width: 100,
+                render: (is_used: boolean, record: InvitationCode) => {
+                  if (is_used) {
+                    return <Tag color="default">已使用</Tag>
+                  }
+                  if (record.expires_at && dayjs(record.expires_at).isBefore(dayjs())) {
+                    return <Tag color="red">已过期</Tag>
+                  }
+                  return <Tag color="green">可用</Tag>
+                },
+              },
+              {
+                title: '创建时间',
+                dataIndex: 'created_at',
+                key: 'created_at',
+                width: 160,
+                render: (date: string) => dayjs(date).format('YYYY-MM-DD HH:mm'),
+              },
+              {
+                title: '过期时间',
+                dataIndex: 'expires_at',
+                key: 'expires_at',
+                width: 160,
+                render: (date: string | null) => date ? dayjs(date).format('YYYY-MM-DD HH:mm') : '永不过期',
+              },
+              {
+                title: '使用者',
+                dataIndex: 'used_by_name',
+                key: 'used_by_name',
+                width: 100,
+                render: (name: string | null) => name || '-',
+              },
+              {
+                title: '操作',
+                key: 'action',
+                width: 80,
+                render: (_: unknown, record: InvitationCode) => (
+                  !record.is_used && (
+                    <Popconfirm
+                      title="确认删除"
+                      description="确定要删除这个邀请码吗？"
+                      onConfirm={() => handleDeleteInvitationCode(record.id)}
+                      okText="确认"
+                      cancelText="取消"
+                    >
+                      <Button type="link" danger size="small">删除</Button>
+                    </Popconfirm>
+                  )
+                ),
+              },
+            ]}
+          />
+        </div>
+      )}
+
+      {/* 邀请码生成成功弹窗 */}
+      <Modal
+        title="邀请码生成成功"
+        open={invitationModalOpen}
+        onCancel={() => { setInvitationModalOpen(false); setNewCode(null); }}
+        footer={[
+          <Button key="copy" type="primary" onClick={() => { 
+            if (newCode) handleCopyCode(newCode)
+          }}>
+            复制邀请码
+          </Button>,
+          <Button key="close" onClick={() => { setInvitationModalOpen(false); setNewCode(null); }}>
+            关闭
+          </Button>,
+        ]}
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <div style={{ marginBottom: 16 }}>
+            <KeyOutlined style={{ fontSize: 48, color: '#F59E0B' }} />
+          </div>
+          <p style={{ marginBottom: 16, color: '#6B7280' }}>新的邀请码已生成：</p>
+          <div style={{ 
+            background: '#FEF3C7', 
+            padding: '16px 24px', 
+            borderRadius: 8,
+            marginBottom: 16
+          }}>
+            <code style={{ 
+              fontSize: 24, 
+              fontWeight: 600, 
+              letterSpacing: 2,
+              color: '#92400E'
+            }}>
+              {newCode}
+            </code>
+          </div>
+          <p style={{ fontSize: 13, color: '#9CA3AF' }}>
+            请将此邀请码发送给需要注册的用户，每个邀请码只能使用一次
+          </p>
+        </div>
+      </Modal>
 
       {/* 日报弹窗 */}
       <Modal

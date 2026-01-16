@@ -11,6 +11,7 @@ from app.schemas.common import (
 from app.schemas.member import (
     MemberBase,
     MemberCreate,
+    MemberRegister,
     MemberUpdate,
     MemberStatusUpdate,
     MemberInfo,
@@ -81,6 +82,12 @@ from app.schemas.notification import (
     NotificationListResponse,
     MarkReadRequest,
 )
+from app.schemas.invitation_code import (
+    InvitationCodeCreate,
+    InvitationCodeValidate,
+    InvitationCodeInfo,
+    InvitationCodeBrief,
+)
 
 __all__ = [
     # Common
@@ -92,6 +99,7 @@ __all__ = [
     # Member
     "MemberBase",
     "MemberCreate",
+    "MemberRegister",
     "MemberUpdate",
     "MemberStatusUpdate",
     "MemberInfo",
@@ -155,4 +163,9 @@ __all__ = [
     "UnreadCountResponse",
     "NotificationListResponse",
     "MarkReadRequest",
+    # Invitation Code
+    "InvitationCodeCreate",
+    "InvitationCodeValidate",
+    "InvitationCodeInfo",
+    "InvitationCodeBrief",
 ]

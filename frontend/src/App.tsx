@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { Spin } from 'antd'
 import { useAuthStore } from '@/store/useAuthStore'
 
 // Layout
@@ -15,7 +17,21 @@ import Analytics from '@/pages/Analytics'
 
 // 路由守卫
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { token } = useAuthStore()
+  const { token, isInitialized } = useAuthStore()
+  
+  // 如果还没初始化完成，显示加载状态
+  if (!isInitialized) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <Spin size="large" tip="加载中..." />
+      </div>
+    )
+  }
   
   if (!token) {
     return <Navigate to="/login" replace />
@@ -25,6 +41,27 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  const { initializeAuth, isInitialized } = useAuthStore()
+
+  // 应用启动时初始化认证状态
+  useEffect(() => {
+    initializeAuth()
+  }, [initializeAuth])
+
+  // 等待初始化完成再渲染路由
+  if (!isInitialized) {
+    return (
+      <div style={{ 
+        height: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center' 
+      }}>
+        <Spin size="large" tip="加载中..." />
+      </div>
+    )
+  }
+
   return (
     <Routes>
       {/* 公开路由 */}

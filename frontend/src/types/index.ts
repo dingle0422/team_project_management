@@ -240,6 +240,33 @@ export interface LoginResponse {
   user: Member
 }
 
+// 注册相关
+export interface RegisterRequest {
+  name: string
+  email: string
+  password: string
+  invitation_code: string
+  job_title?: string
+  phone?: string
+}
+
+// 邀请码相关
+export interface InvitationCode {
+  id: number
+  code: string
+  is_used: boolean
+  expires_at?: string
+  created_at: string
+  used_at?: string
+  created_by_name?: string
+  used_by_name?: string
+}
+
+export interface InvitationCodeBrief {
+  code: string
+  expires_at?: string
+}
+
 // 统计数据
 export interface DashboardStats {
   today_tasks: number
