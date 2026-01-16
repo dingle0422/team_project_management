@@ -156,7 +156,7 @@ export default function Dashboard() {
     task_id: number
     hours: number
     description: string
-    work_type: string
+    work_type: 'development' | 'design' | 'testing' | 'meeting' | 'research' | 'other'
   }) => {
     if (!selectedLog) return
     try {
