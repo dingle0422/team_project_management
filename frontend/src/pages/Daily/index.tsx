@@ -481,79 +481,103 @@ export default function Daily() {
         footer={null}
         width={600}
       >
-        {selectedLog && (
-          <div className="log-detail">
-            {/* 头部操作栏 */}
-            <div className="log-detail-header">
-              <div className="log-detail-title">
-                <Tag color={WORK_TYPE_CONFIG[selectedLog.work_type]?.color}>
-                  {WORK_TYPE_CONFIG[selectedLog.work_type]?.label}
-                </Tag>
-                <span className="log-detail-date">
-                  {dayjs(selectedLog.work_date).format('YYYY年M月D日')}
-                </span>
+        {selectedLog && (() => {
+          // 获取对应日期的 summary
+          const daySummary = summaries.find(s => s.summary_date === selectedLog.work_date)
+          return (
+            <div className="log-detail">
+              {/* 头部操作栏 */}
+              <div className="log-detail-header">
+                <div className="log-detail-title">
+                  <Tag color={WORK_TYPE_CONFIG[selectedLog.work_type]?.color}>
+                    {WORK_TYPE_CONFIG[selectedLog.work_type]?.label}
+                  </Tag>
+                  <span className="log-detail-date">
+                    {dayjs(selectedLog.work_date).format('YYYY年M月D日')}
+                  </span>
+                </div>
+                <div className="log-detail-actions">
+                  <Button icon={<EditOutlined />} onClick={handleEditFromDetail}>
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确认删除"
+                    description="确定要删除这条工时记录吗？此操作不可撤销。"
+                    onConfirm={() => handleDeleteLog(selectedLog.id)}
+                    okText="确认"
+                    cancelText="取消"
+                  >
+                    <Button danger icon={<DeleteOutlined />}>删除</Button>
+                  </Popconfirm>
+                </div>
               </div>
-              <div className="log-detail-actions">
-                <Button icon={<EditOutlined />} onClick={handleEditFromDetail}>
-                  编辑
-                </Button>
-                <Popconfirm
-                  title="确认删除"
-                  description="确定要删除这条工时记录吗？此操作不可撤销。"
-                  onConfirm={() => handleDeleteLog(selectedLog.id)}
-                  okText="确认"
-                  cancelText="取消"
-                >
-                  <Button danger icon={<DeleteOutlined />}>删除</Button>
-                </Popconfirm>
-              </div>
-            </div>
 
-            {/* 任务信息 */}
-            <div className="log-detail-section">
-              <h4>关联任务</h4>
-              <div className="log-detail-task">
-                <span className="task-name">{selectedLog.task?.title || '未关联任务'}</span>
-                {selectedLog.project && (
-                  <Tag color="blue">{selectedLog.project.name}</Tag>
+              {/* 任务信息 */}
+              <div className="log-detail-section">
+                <h4>关联任务</h4>
+                <div className="log-detail-task">
+                  <span className="task-name">{selectedLog.task?.title || '未关联任务'}</span>
+                  {selectedLog.project && (
+                    <Tag color="blue">{selectedLog.project.name}</Tag>
+                  )}
+                </div>
+              </div>
+
+              {/* 工时信息 */}
+              <div className="log-detail-section">
+                <h4>工作时长</h4>
+                <div className="log-detail-hours">
+                  <Avatar 
+                    size={48}
+                    style={{ 
+                      background: WORK_TYPE_CONFIG[selectedLog.work_type]?.color,
+                      fontSize: 18,
+                      fontWeight: 600
+                    }}
+                  >
+                    {selectedLog.hours}h
+                  </Avatar>
+                </div>
+              </div>
+
+              {/* 工作内容 */}
+              <div className="log-detail-section">
+                <h4>工作内容</h4>
+                <p className="log-detail-content">
+                  {selectedLog.description || '暂无描述'}
+                </p>
+              </div>
+
+              {/* 遇到的问题 */}
+              {daySummary?.problems && (
+                <div className="log-detail-section">
+                  <h4>遇到的问题</h4>
+                  <p className="log-detail-content log-detail-problems">
+                    {daySummary.problems}
+                  </p>
+                </div>
+              )}
+
+              {/* 明日计划 */}
+              {daySummary?.tomorrow_plan && (
+                <div className="log-detail-section">
+                  <h4>明日计划</h4>
+                  <p className="log-detail-content log-detail-plan">
+                    {daySummary.tomorrow_plan}
+                  </p>
+                </div>
+              )}
+
+              {/* 记录信息 */}
+              <div className="log-detail-meta">
+                <span>记录时间: {dayjs(selectedLog.created_at).format('YYYY-MM-DD HH:mm')}</span>
+                {selectedLog.member && (
+                  <span>记录人: {selectedLog.member.name}</span>
                 )}
               </div>
             </div>
-
-            {/* 工时信息 */}
-            <div className="log-detail-section">
-              <h4>工作时长</h4>
-              <div className="log-detail-hours">
-                <Avatar 
-                  size={48}
-                  style={{ 
-                    background: WORK_TYPE_CONFIG[selectedLog.work_type]?.color,
-                    fontSize: 18,
-                    fontWeight: 600
-                  }}
-                >
-                  {selectedLog.hours}h
-                </Avatar>
-              </div>
-            </div>
-
-            {/* 工作内容 */}
-            <div className="log-detail-section">
-              <h4>工作内容</h4>
-              <p className="log-detail-content">
-                {selectedLog.description || '暂无描述'}
-              </p>
-            </div>
-
-            {/* 记录信息 */}
-            <div className="log-detail-meta">
-              <span>记录时间: {dayjs(selectedLog.created_at).format('YYYY-MM-DD HH:mm')}</span>
-              {selectedLog.member && (
-                <span>记录人: {selectedLog.member.name}</span>
-              )}
-            </div>
-          </div>
-        )}
+          )
+        })()}
       </Modal>
 
       {/* 填写日报弹窗 */}

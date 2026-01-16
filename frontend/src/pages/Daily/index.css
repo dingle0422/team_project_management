@@ -265,6 +265,18 @@
   color: var(--gray-500);
 }
 
+/* 遇到的问题样式 */
+.log-detail-problems {
+  border-left: 3px solid #F59E0B;
+  background: #FFFBEB;
+}
+
+/* 明日计划样式 */
+.log-detail-plan {
+  border-left: 3px solid #3B82F6;
+  background: #EFF6FF;
+}
+
 .logs-section {
   background: var(--white);
   border-radius: var(--radius-md);

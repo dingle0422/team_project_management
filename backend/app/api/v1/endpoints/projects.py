@@ -31,7 +31,7 @@ def get_project_task_stats(db: Session, project_id: int) -> TaskStats:
     total = db.query(func.count(Task.id)).filter(Task.project_id == project_id).scalar()
     completed = db.query(func.count(Task.id)).filter(
         Task.project_id == project_id,
-        Task.status == "completed"
+        Task.status == "done"  # 任务完成状态是 "done" 而不是 "completed"
     ).scalar()
     in_progress = db.query(func.count(Task.id)).filter(
         Task.project_id == project_id,

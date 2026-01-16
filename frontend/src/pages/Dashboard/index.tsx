@@ -6,7 +6,7 @@ import dayjs from 'dayjs'
 import { useAuthStore } from '@/store/useAuthStore'
 import { useAppStore } from '@/store/useAppStore'
 import { tasksApi, dailyLogsApi, meetingsApi } from '@/services/api'
-import type { Task, DailyWorkLog, Meeting } from '@/types'
+import type { Task, DailyWorkLog, Meeting, DailySummary } from '@/types'
 import './index.css'
 
 const { TextArea } = Input
@@ -42,6 +42,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ todayTasks: 0, weekHours: 0, weekCompleted: 0, activeProjects: 0 })
   const [todayLogs, setTodayLogs] = useState<DailyWorkLog[]>([])
+  const [todaySummary, setTodaySummary] = useState<DailySummary | null>(null)
   const [recentMeetings, setRecentMeetings] = useState<Meeting[]>([])
   const [selectedMeeting, setSelectedMeeting] = useState<Meeting | null>(null)
   const [selectedLog, setSelectedLog] = useState<DailyWorkLog | null>(null)
@@ -68,20 +69,27 @@ export default function Dashboard() {
       // 获取今日工作日志（只获取当前用户自己的）
       const today = dayjs().format('YYYY-MM-DD')
       const currentUserId = useAuthStore.getState().user?.id
-      const logsRes = await dailyLogsApi.getLogs({ 
-        work_date: today, 
-        member_id: currentUserId 
-      })
+      
+      const [logsRes, summariesRes, meetingsRes, statsRes] = await Promise.all([
+        dailyLogsApi.getLogs({ 
+          work_date: today, 
+          member_id: currentUserId 
+        }),
+        dailyLogsApi.getSummaries({
+          member_id: currentUserId,
+          start_date: today,
+          end_date: today,
+        }),
+        meetingsApi.getList({ page_size: 5 }),
+        dailyLogsApi.getStats({ 
+          start_date: dayjs().startOf('week').format('YYYY-MM-DD'), 
+          end_date: dayjs().endOf('week').format('YYYY-MM-DD') 
+        }),
+      ])
+      
       setTodayLogs(logsRes.data.items)
-      
-      // 获取最近会议纪要
-      const meetingsRes = await meetingsApi.getList({ page_size: 5 })
+      setTodaySummary(summariesRes.data.items?.[0] || null)
       setRecentMeetings(meetingsRes.data.items)
-      
-      // 获取统计
-      const weekStart = dayjs().startOf('week').format('YYYY-MM-DD')
-      const weekEnd = dayjs().endOf('week').format('YYYY-MM-DD')
-      const statsRes = await dailyLogsApi.getStats({ start_date: weekStart, end_date: weekEnd })
       
       setStats({
         todayTasks: myTasks.filter(t => t.status !== 'done' && t.status !== 'cancelled').length,
@@ -572,6 +580,26 @@ export default function Dashboard() {
                 {selectedLog.description || '暂无描述'}
               </p>
             </div>
+
+            {/* 遇到的问题 */}
+            {todaySummary?.problems && (
+              <div className="log-detail-section">
+                <h4>遇到的问题</h4>
+                <p className="log-detail-content log-detail-problems">
+                  {todaySummary.problems}
+                </p>
+              </div>
+            )}
+
+            {/* 明日计划 */}
+            {todaySummary?.tomorrow_plan && (
+              <div className="log-detail-section">
+                <h4>明日计划</h4>
+                <p className="log-detail-content log-detail-plan">
+                  {todaySummary.tomorrow_plan}
+                </p>
+              </div>
+            )}
 
             {/* 记录信息 */}
             <div className="log-detail-meta">
