@@ -124,9 +124,25 @@
   border-radius: 4px;
 }
 
+.recent-item-dates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
 .recent-item-date {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--gray-500);
+  white-space: nowrap;
+}
+
+.recent-item-date.start {
+  color: #3B82F6;
+}
+
+.recent-item-date.due {
+  color: #DC2626;
 }
 
 .recent-item-content {

@@ -21,7 +21,9 @@ interface RecentItem {
   type: RecentItemType
   title: string
   subtitle?: string
-  date?: string
+  date?: string  // 主要日期（用于排序）
+  startDate?: string  // 开始日期
+  dueDate?: string  // 截止日期
   taskId?: number
   notificationId?: number
   link?: string
@@ -253,6 +255,8 @@ export default function Dashboard() {
           title: task.title,
           subtitle: task.project?.name,
           date: task.start_date,
+          startDate: task.start_date,
+          dueDate: task.due_date,
           taskId: task.id,
           priority: task.priority,
           projectName: task.project?.name,
@@ -275,13 +279,17 @@ export default function Dashboard() {
             title: task.title,
             subtitle: task.project?.name,
             date: task.due_date,
+            startDate: task.start_date,
+            dueDate: task.due_date,
             taskId: task.id,
             priority: task.priority,
             projectName: task.project?.name,
             isValid: true,
           })
         } else {
+          // 任务同时有开始和到期日期在时间窗口内，更新类型为到期预警并添加 dueDate
           items[existingIndex].type = 'task_due'
+          items[existingIndex].dueDate = task.due_date
         }
       })
       
@@ -846,10 +854,26 @@ export default function Dashboard() {
                           {tagConfig.icon}
                           {tagConfig.label}
                         </Tag>
-                        {item.date && (
-                          <span className="recent-item-date">
-                            {formatItemDate(item.date)}
-                          </span>
+                        {/* 任务类型显示开始和截止日期，通知类型显示创建时间 */}
+                        {(item.type === 'task_start' || item.type === 'task_due') ? (
+                          <div className="recent-item-dates">
+                            {item.startDate && (
+                              <span className="recent-item-date start">
+                                开始: {formatItemDate(item.startDate)}
+                              </span>
+                            )}
+                            {item.dueDate && (
+                              <span className="recent-item-date due">
+                                截止: {formatItemDate(item.dueDate)}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          item.date && (
+                            <span className="recent-item-date">
+                              {formatItemDate(item.date)}
+                            </span>
+                          )
                         )}
                       </div>
                       <div className="recent-item-content">
