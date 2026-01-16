@@ -165,6 +165,9 @@ export default function Dashboard() {
       const windowStart = centerDate.subtract(1, 'week').startOf('day')
       const windowEnd = centerDate.add(1, 'week').endOf('day')
       
+      console.log('Time window:', windowStart.format('YYYY-MM-DD'), 'to', windowEnd.format('YYYY-MM-DD'))
+      console.log('Tasks count:', tasks.length)
+      
       // 获取通知
       const notificationsRes = await notificationsApi.getList({ 
         page_size: 100,
@@ -173,12 +176,20 @@ export default function Dashboard() {
       
       const items: RecentItem[] = []
       
+      // 判断日期是否在时间窗口内（包含边界）
+      const isInWindow = (dateStr: string) => {
+        const date = dayjs(dateStr).startOf('day')
+        return (date.isAfter(windowStart) || date.isSame(windowStart, 'day')) && 
+               (date.isBefore(windowEnd) || date.isSame(windowEnd, 'day'))
+      }
+      
       // 1. 时间窗口内开始的任务（待完成标签）
       const windowStartTasks = tasks.filter(task => {
         if (!task.start_date) return false
-        const startDate = dayjs(task.start_date)
-        return startDate.isAfter(windowStart) && startDate.isBefore(windowEnd)
+        return isInWindow(task.start_date)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
+      
+      console.log('Window start tasks:', windowStartTasks.length, windowStartTasks.map(t => ({ title: t.title, start_date: t.start_date })))
       
       windowStartTasks.forEach(task => {
         items.push({
@@ -197,9 +208,10 @@ export default function Dashboard() {
       // 2. 时间窗口内到期的任务（到期预警标签）
       const windowDueTasks = tasks.filter(task => {
         if (!task.due_date) return false
-        const dueDate = dayjs(task.due_date)
-        return dueDate.isAfter(windowStart) && dueDate.isBefore(windowEnd)
+        return isInWindow(task.due_date)
       }).filter(task => task.status !== 'done' && task.status !== 'cancelled')
+      
+      console.log('Window due tasks:', windowDueTasks.length, windowDueTasks.map(t => ({ title: t.title, due_date: t.due_date })))
       
       windowDueTasks.forEach(task => {
         const existingIndex = items.findIndex(item => item.taskId === task.id && item.type === 'task_start')
@@ -220,19 +232,13 @@ export default function Dashboard() {
         }
       })
       
-      // 3. 审核提醒 - 需要检查任务是否仍有待审核状态
+      // 3. 审核提醒 - 不受时间窗口限制，只检查任务是否仍有待审核状态
       const approvalNotifications = notificationsRes.data.items.filter(
         (n: Notification) => (n.notification_type === 'review' || n.notification_type === 'approval_request') && !n.is_read
       )
       
       // 检查每个审核通知对应的任务状态
       for (const notification of approvalNotifications) {
-        // 检查通知时间是否在时间窗口内
-        const notifDate = dayjs(notification.created_at)
-        if (!notifDate.isAfter(windowStart) || !notifDate.isBefore(windowEnd)) {
-          continue
-        }
-        
         // 检查任务是否仍需审核
         if (notification.content_type === 'task') {
           const relatedTask = tasks.find(t => t.id === notification.content_id)
@@ -276,18 +282,12 @@ export default function Dashboard() {
         })
       }
       
-      // 4. @提及消息提醒 - 检查内容是否仍存在
+      // 4. @提及消息提醒 - 不受时间窗口限制，只检查内容是否仍存在
       const mentionNotifications = notificationsRes.data.items.filter(
         (n: Notification) => n.notification_type === 'mention' && !n.is_read
       )
       
       for (const notification of mentionNotifications) {
-        // 检查通知时间是否在时间窗口内
-        const notifDate = dayjs(notification.created_at)
-        if (!notifDate.isAfter(windowStart) || !notifDate.isBefore(windowEnd)) {
-          continue
-        }
-        
         // 检查关联的任务是否仍存在
         if (notification.content_type === 'task') {
           const relatedTask = tasks.find(t => t.id === notification.content_id)

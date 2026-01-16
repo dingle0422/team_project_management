@@ -526,10 +526,13 @@ export default function Tasks() {
             <Form.Item name="estimated_hours" label="预估工时" style={{ flex: 1 }}>
               <InputNumber min={0.5} step={0.5} addonAfter="小时" style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="due_date" label="截止日期" style={{ flex: 1 }}>
+            <Form.Item name="start_date" label="开始日期" style={{ flex: 1 }}>
               <DatePicker style={{ width: '100%' }} />
             </Form.Item>
           </div>
+          <Form.Item name="due_date" label="截止日期">
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
           <Form.Item>
             <Button type="primary" htmlType="submit" block>
               创建任务
