@@ -130,11 +130,7 @@ export default function Login() {
             </Form.Item>
           </Form>
 
-          <div className="login-footer">
-            <p>
-              {/* 测试账号: <code>admin@example.com</code> / <code>admin123</code> */}
-            </p>
-          </div>
+          {/* 已移除测试账号信息，提升安全性 */}
         </>
       ),
     },
