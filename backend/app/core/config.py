@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     API_V1_PREFIX: str = "/api/v1"
     
     # 数据库配置 (同步版本)
-    DATABASE_URL: str = "postgresql://postgres:galgo123@localhost:5432/project_management"
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/project_management"
     DATABASE_ECHO: bool = False
     
     # JWT认证配置
