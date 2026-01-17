@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     DATABASE_ECHO: bool = False
     
     # JWT认证配置
-    SECRET_KEY: str = "your-secret-key-change-in-production"
+    SECRET_KEY: str = "dab75661db43446fb3b0f167778c9324"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24小时
     
